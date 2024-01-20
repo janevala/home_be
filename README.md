@@ -1,11 +1,11 @@
 # homebe
-Home BE Auth
+Home BE Auth, to be used together with Home FE which is a Flutter cient app. Home BE is backend app written in Go. This backend app can be run in Docker container to provide client app with data. It runs by default on port 8091, and is not using true authentication, as it is not intended to be used in production. It is intended to be used as a demo app for learning purposes.
 
-## Installation
+## Installation notes
 
-export GOROOT=/Users/jarno/go
+export GOROOT=/Users/user/go
 export GOPATH=$GOROOT
-export PATH=$PATH:/Users/jarno/flutter/bin:/Users/jarno/flutter/bin/cache/dart-sdk/bin:$GOROOT/bin
+export PATH=$PATH:/Users/user/flutter/bin:/Users/user/flutter/bin/cache/dart-sdk/bin:$GOROOT/bin
 
 191883  go mod init main.go
 191884  go mod tidy
