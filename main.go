@@ -34,8 +34,9 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
+// / Client needs these endpoints
 func init() {
 	http.HandleFunc("/auth", api.AuthApi)
-	http.HandleFunc("/rss_sites", api.RssApi)
-	http.HandleFunc("/rss_aggregate", api.RssAggregateApi)
+	http.HandleFunc("/sites", api.RssApi)
+	http.HandleFunc("/aggregate", api.AggregateApi)
 }

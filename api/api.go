@@ -79,7 +79,7 @@ func AuthApi(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RssAggregateApi(w http.ResponseWriter, r *http.Request) {
+func AggregateApi(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -102,23 +102,23 @@ func RssAggregateApi(w http.ResponseWriter, r *http.Request) {
 		suomenUutisetFeed, _ := feedParser.ParseURL("https://www.suomenuutiset.fi/feed/")
 		kansanUutisetFeed, _ := feedParser.ParseURL("https://www.ku.fi/feed")
 
-		var allRssSlice []*gofeed.Item = []*gofeed.Item{}
-		allRssSlice = append(suomenUutisetFeed.Items, kansanUutisetFeed.Items...)
-		allRssSlice = append(allRssSlice, yleFeed.Items...)
-		allRssSlice = append(allRssSlice, kalevaFeed.Items...)
-		allRssSlice = append(allRssSlice, talousElamaFeed.Items...)
+		var combinedFeed []*gofeed.Item = []*gofeed.Item{}
+		combinedFeed = append(combinedFeed, yleFeed.Items...)
+		combinedFeed = append(combinedFeed, kalevaFeed.Items...)
+		combinedFeed = append(combinedFeed, talousElamaFeed.Items...)
+		combinedFeed = append(suomenUutisetFeed.Items, kansanUutisetFeed.Items...)
 
-		var isSorted bool = sort.SliceIsSorted(allRssSlice, func(i, j int) bool {
-			return allRssSlice[i].PublishedParsed.After(*allRssSlice[j].PublishedParsed)
+		var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
+			return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
 		})
 
 		if !isSorted {
-			sort.Slice(allRssSlice, func(i, j int) bool {
-				return allRssSlice[i].PublishedParsed.After(*allRssSlice[j].PublishedParsed)
+			sort.Slice(combinedFeed, func(i, j int) bool {
+				return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
 			})
 		}
 
-		jsonArray, err := json.Marshal(allRssSlice)
+		jsonArray, err := json.Marshal(combinedFeed)
 		if err != nil {
 			log.Println("JSON Marshal error")
 		}
@@ -148,7 +148,7 @@ func RssApi(w http.ResponseWriter, r *http.Request) {
 
 		timestamp := strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)
 
-		jsonArray := []byte(`{ "time": "` + timestamp + `",
+		reponseJsonArray := []byte(`{ "time": "` + timestamp + `",
 			"title": "RSS Feeds",
 			"sites": [
 			  {
@@ -206,7 +206,7 @@ func RssApi(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		w.Write(jsonArray)
+		w.Write(reponseJsonArray)
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
