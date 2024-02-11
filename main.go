@@ -15,6 +15,11 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
+type LoggerHandler struct {
+	handler http.Handler
+	logger  *log.Logger
+}
+
 type LoginObject struct {
 	Username     string `json:"username"`
 	Password     string `json:"password"`
@@ -208,11 +213,6 @@ func RssApi(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
-}
-
-type LoggerHandler struct {
-	handler http.Handler
-	logger  *log.Logger
 }
 
 func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
