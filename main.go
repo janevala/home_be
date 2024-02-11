@@ -23,16 +23,6 @@ type LoginObject struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-type LoggerHandler struct {
-	handler http.Handler
-	logger  *log.Logger
-}
-
-func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.logger.Printf("Received request: %s %s", r.Method, r.URL.Path)
-	h.handler.ServeHTTP(w, r)
-}
-
 func AuthApi(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -218,6 +208,16 @@ func RssApi(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+type LoggerHandler struct {
+	handler http.Handler
+	logger  *log.Logger
+}
+
+func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.logger.Printf("Received request: %s %s", r.Method, r.URL.Path)
+	h.handler.ServeHTTP(w, r)
 }
 
 func main() {
