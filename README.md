@@ -5,7 +5,7 @@ Home BE Auth, to be used together with Home FE which is a Flutter cient app. Hom
 ## Go
 ```
 sudo apt install -y golang
-go mod init home-backend
+go mod init github.com/janevala/home_be
 go mod tidy
 go get github.com/mmcdole/gofeed
 go get github.com/google/uuid
