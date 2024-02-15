@@ -25,7 +25,7 @@ type LoginObject struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-func AuthApi(w http.ResponseWriter, r *http.Request) {
+func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -79,7 +79,7 @@ func AuthApi(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AggregateApi(w http.ResponseWriter, r *http.Request) {
+func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -131,7 +131,7 @@ func AggregateApi(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RssApi(w http.ResponseWriter, r *http.Request) {
+func RssHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")

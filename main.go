@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/janevala/home_be/api"
 )
 
@@ -34,9 +35,11 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
-// / Client needs these endpoints
+// Client needs these endpoints
 func init() {
-	http.HandleFunc("/auth", api.AuthApi)
-	http.HandleFunc("/sites", api.RssApi)
-	http.HandleFunc("/aggregate", api.AggregateApi)
+	r := mux.NewRouter()
+	r.HandleFunc("/auth", api.AuthHandler)
+	r.HandleFunc("/sites", api.RssHandler)
+	r.HandleFunc("/aggregate", api.AggregateHandler)
+	http.Handle("/", r)
 }
