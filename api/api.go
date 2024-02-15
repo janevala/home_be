@@ -3,7 +3,6 @@ package api
 import (
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -127,6 +126,18 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type sites struct {
+	Time  int    `json:"time"`
+	Title string `json:"title"`
+	Sites []site `json:"sites"`
+}
+
+type site struct {
+	Uuid  string `json:"uuid"`
+	Title string `json:"title"`
+	Url   string `json:"url"`
+}
+
 func RssHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -142,66 +153,81 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		timestamp := strconv.FormatInt(time.Now().UTC().UnixMilli(), 10)
+		sites := sites{
+			Time:  int(time.Now().UTC().UnixMilli()),
+			Title: "RSS Feeds",
+			Sites: []site{
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Ilta-Sanomat",
+					Url:   "https://www.is.fi/rss/tuoreimmat.xml",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Helsingin Sanomat",
+					Url:   "https://www.hs.fi/rss/tuoreimmat.xml",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Yle",
+					Url:   "https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Iltalehti",
+					Url:   "https://www.iltalehti.fi/rss/uutiset.xml",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Talouselämä",
+					Url:   "https://www.talouselama.fi/rss.xml",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Kaleva",
+					Url:   "https://www.kaleva.fi/feedit/rss/managed-listing/rss-uusimmat/",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Kauppalehti",
+					Url:   "https://feeds.kauppalehti.fi/rss/main",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Suomen Uutiset",
+					Url:   "https://www.suomenuutiset.fi/feed/",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Kansan Uutiset",
+					Url:   "https://www.ku.fi/feed",
+				},
+				{
+					Uuid:  uuid.NewString(),
+					Title: "Talouselämä",
+					Url:   "https://www.talouselama.fi/rss.xml",
+				},
+			},
+		}
 
-		reponseJsonArray := []byte(`{ "time": "` + timestamp + `",
-			"title": "RSS Feeds",
-			"sites": [
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Ilta-Sanomat",
-				"url": "https://www.is.fi/rss/tuoreimmat.xml"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Helsingin Sanomat",
-				"url": "https://www.hs.fi/rss/tuoreimmat.xml"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Yle",
-				"url": "https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Iltalehti",
-				"url": "https://www.iltalehti.fi/rss/uutiset.xml"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Talouselämä",
-				"url": "https://www.talouselama.fi/rss.xml"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Kaleva",
-				"url": "https://www.kaleva.fi/feedit/rss/managed-listing/rss-uusimmat/"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Kauppalehti",
-				"url": "https://feeds.kauppalehti.fi/rss/main"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Suomen Uutiset",
-				"url": "https://www.suomenuutiset.fi/feed/"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Kansan Uutiset",
-				"url": "https://www.ku.fi/feed"
-			  },
-			  {
-				"uuid": "` + uuid.NewString() + `",
-				"title": "Talouselämä",
-				"url": "https://www.talouselama.fi/rss.xml"
-			  }
-			]
-		  }`)
+		finalJson, err := json.Marshal(sites)
+		if err != nil {
+			log.Println("JSON Marshal error")
+		} else {
+			log.Println(string(finalJson))
+		}
+
+		finalJsonIndent, err := json.MarshalIndent(sites, "", "\t")
+		if err != nil {
+			log.Println("JSON Marshal error")
+		} else {
+			log.Println(string(finalJsonIndent))
+		}
+
+		responseBytes := []byte(finalJson)
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		w.Write(reponseJsonArray)
+		w.Write(responseBytes)
 	}
 }
