@@ -9,6 +9,7 @@ go mod init github.com/janevala/home_be
 go mod tidy
 go get github.com/mmcdole/gofeed
 go get github.com/google/uuid
+go get github.com/gorilla/mux
 ```
 
 # Docker

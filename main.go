@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"home-backend/api"
+	"github.com/janevala/home_be/api"
 )
 
 type LoggerHandler struct {
