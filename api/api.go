@@ -74,8 +74,6 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Invalid Credentials"))
 		}
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -126,8 +124,6 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonArray)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -207,7 +203,5 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
 		w.Write(reponseJsonArray)
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
