@@ -216,8 +216,6 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 		finalJson, err := json.Marshal(sites)
 		if err != nil {
 			log.Println("JSON Marshal error")
-		} else {
-			log.Println(string(finalJson))
 		}
 
 		finalJsonIndent, err := json.MarshalIndent(sites, "", "\t")
