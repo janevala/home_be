@@ -93,17 +93,16 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 
 		feedParser := gofeed.NewParser()
 
-		yleFeed, _ := feedParser.ParseURL("https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET")
 		kalevaFeed, _ := feedParser.ParseURL("https://www.kaleva.fi/feedit/rss/managed-listing/rss-uusimmat/")
 		talousElamaFeed, _ := feedParser.ParseURL("https://www.talouselama.fi/rss.xml")
 		suomenUutisetFeed, _ := feedParser.ParseURL("https://www.suomenuutiset.fi/feed/")
 		kansanUutisetFeed, _ := feedParser.ParseURL("https://www.ku.fi/feed")
 
 		var combinedFeed []*gofeed.Item = []*gofeed.Item{}
-		combinedFeed = append(combinedFeed, yleFeed.Items...)
 		combinedFeed = append(combinedFeed, kalevaFeed.Items...)
 		combinedFeed = append(combinedFeed, talousElamaFeed.Items...)
-		combinedFeed = append(suomenUutisetFeed.Items, kansanUutisetFeed.Items...)
+		combinedFeed = append(combinedFeed, kansanUutisetFeed.Items...)
+		combinedFeed = append(combinedFeed, suomenUutisetFeed.Items...)
 
 		var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
 			return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
