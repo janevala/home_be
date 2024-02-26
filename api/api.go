@@ -95,12 +95,16 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 
 		kalevaFeed, _ := feedParser.ParseURL("https://www.kaleva.fi/feedit/rss/managed-listing/rss-uusimmat/")
 		talousElamaFeed, _ := feedParser.ParseURL("https://www.talouselama.fi/rss.xml")
+		kauppalehtiFeed, _ := feedParser.ParseURL("https://feeds.kauppalehti.fi/rss/main")
+		iltaLehtiFeed, _ := feedParser.ParseURL("https://www.iltalehti.fi/rss/uutiset.xml")
 		suomenUutisetFeed, _ := feedParser.ParseURL("https://www.suomenuutiset.fi/feed/")
 		kansanUutisetFeed, _ := feedParser.ParseURL("https://www.ku.fi/feed")
 
 		var combinedFeed []*gofeed.Item = []*gofeed.Item{}
 		combinedFeed = append(combinedFeed, kalevaFeed.Items...)
 		combinedFeed = append(combinedFeed, talousElamaFeed.Items...)
+		combinedFeed = append(combinedFeed, kauppalehtiFeed.Items...)
+		combinedFeed = append(combinedFeed, iltaLehtiFeed.Items...)
 		combinedFeed = append(combinedFeed, kansanUutisetFeed.Items...)
 		combinedFeed = append(combinedFeed, suomenUutisetFeed.Items...)
 
