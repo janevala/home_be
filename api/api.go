@@ -93,20 +93,16 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 
 		feedParser := gofeed.NewParser()
 
-		kalevaFeed, _ := feedParser.ParseURL("https://www.kaleva.fi/feedit/rss/managed-listing/rss-uusimmat/")
-		talousElamaFeed, _ := feedParser.ParseURL("https://www.talouselama.fi/rss.xml")
-		kauppalehtiFeed, _ := feedParser.ParseURL("https://feeds.kauppalehti.fi/rss/main")
-		iltaLehtiFeed, _ := feedParser.ParseURL("https://www.iltalehti.fi/rss/uutiset.xml")
-		suomenUutisetFeed, _ := feedParser.ParseURL("https://www.suomenuutiset.fi/feed/")
-		kansanUutisetFeed, _ := feedParser.ParseURL("https://www.ku.fi/feed")
+		phoronixFeed, _ := feedParser.ParseURL("https://www.phoronix.com/rss.php")
+		slashdotFeed, _ := feedParser.ParseURL("https://rss.slashdot.org/Slashdot/slashdotMain")
+		tomsHardwareFeed, _ := feedParser.ParseURL("https://www.tomshardware.com/feeds/all")
+		techCrunchFeed, _ := feedParser.ParseURL("https://techcrunch.com/feed/")
 
 		var combinedFeed []*gofeed.Item = []*gofeed.Item{}
-		combinedFeed = append(combinedFeed, kalevaFeed.Items...)
-		combinedFeed = append(combinedFeed, talousElamaFeed.Items...)
-		combinedFeed = append(combinedFeed, kauppalehtiFeed.Items...)
-		combinedFeed = append(combinedFeed, iltaLehtiFeed.Items...)
-		combinedFeed = append(combinedFeed, kansanUutisetFeed.Items...)
-		combinedFeed = append(combinedFeed, suomenUutisetFeed.Items...)
+		combinedFeed = append(combinedFeed, phoronixFeed.Items...)
+		combinedFeed = append(combinedFeed, slashdotFeed.Items...)
+		combinedFeed = append(combinedFeed, tomsHardwareFeed.Items...)
+		combinedFeed = append(combinedFeed, techCrunchFeed.Items...)
 
 		var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
 			return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
@@ -162,53 +158,23 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 			Sites: []site{
 				{
 					Uuid:  uuid.NewString(),
-					Title: "Ilta-Sanomat",
-					Url:   "https://www.is.fi/rss/tuoreimmat.xml",
+					Title: "Phoronix",
+					Url:   "https://www.phoronix.com/rss.php",
 				},
 				{
 					Uuid:  uuid.NewString(),
-					Title: "Helsingin Sanomat",
-					Url:   "https://www.hs.fi/rss/tuoreimmat.xml",
+					Title: "Slashdot",
+					Url:   "https://rss.slashdot.org/Slashdot/slashdotMain",
 				},
 				{
 					Uuid:  uuid.NewString(),
-					Title: "Yle",
-					Url:   "https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET",
+					Title: "Tom's Hardware",
+					Url:   "https://www.tomshardware.com/feeds/all",
 				},
 				{
 					Uuid:  uuid.NewString(),
-					Title: "Iltalehti",
-					Url:   "https://www.iltalehti.fi/rss/uutiset.xml",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Talouselämä",
-					Url:   "https://www.talouselama.fi/rss.xml",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Kaleva",
-					Url:   "https://www.kaleva.fi/feedit/rss/managed-listing/rss-uusimmat/",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Kauppalehti",
-					Url:   "https://feeds.kauppalehti.fi/rss/main",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Suomen Uutiset",
-					Url:   "https://www.suomenuutiset.fi/feed/",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Kansan Uutiset",
-					Url:   "https://www.ku.fi/feed",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Talouselämä",
-					Url:   "https://www.talouselama.fi/rss.xml",
+					Title: "TechCrunch",
+					Url:   "https://techcrunch.com/feed/",
 				},
 			},
 		}
