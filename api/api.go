@@ -213,11 +213,6 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 
-		finalJson, err := json.Marshal(sites)
-		if err != nil {
-			log.Println("JSON Marshal error")
-		}
-
 		finalJsonIndent, err := json.MarshalIndent(sites, "", "\t")
 		if err != nil {
 			log.Println("JSON Marshal error")
@@ -225,7 +220,8 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(string(finalJsonIndent))
 		}
 
-		responseBytes := []byte(finalJson)
+		responseJson, _ := json.Marshal(sites)
+		responseBytes := []byte(responseJson)
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
