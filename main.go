@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -32,7 +33,9 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	log.Println("Server listening on " + serverPort)
+	log.Println("Number of CPUs: ", runtime.NumCPU())
+	log.Println("Number of Goroutines: ", runtime.NumGoroutine())
+	log.Println("Server listening on: " + serverPort)
 	log.Fatal(server.ListenAndServe())
 }
 
