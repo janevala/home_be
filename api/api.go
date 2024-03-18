@@ -93,16 +93,16 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 
 		feedParser := gofeed.NewParser()
 
-		phoronixFeed, _ := feedParser.ParseURL("https://www.phoronix.com/rss.php")
 		slashdotFeed, _ := feedParser.ParseURL("https://rss.slashdot.org/Slashdot/slashdotMain")
 		tomsHardwareFeed, _ := feedParser.ParseURL("https://www.tomshardware.com/feeds/all")
 		techCrunchFeed, _ := feedParser.ParseURL("https://techcrunch.com/feed/")
+		phoronixFeed, _ := feedParser.ParseURL("https://www.phoronix.com/rss.php")
 
 		var combinedFeed []*gofeed.Item = []*gofeed.Item{}
-		combinedFeed = append(combinedFeed, phoronixFeed.Items...)
 		combinedFeed = append(combinedFeed, slashdotFeed.Items...)
 		combinedFeed = append(combinedFeed, tomsHardwareFeed.Items...)
 		combinedFeed = append(combinedFeed, techCrunchFeed.Items...)
+		combinedFeed = append(combinedFeed, phoronixFeed.Items...)
 
 		var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
 			return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
@@ -114,14 +114,17 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
-		jsonArray, err := json.Marshal(combinedFeed)
+		indentJson, err := json.MarshalIndent(combinedFeed, "", "\t")
 		if err != nil {
 			log.Println("JSON Marshal error")
+		} else {
+			log.Println(string(indentJson))
 		}
 
+		responseJson, _ := json.Marshal(combinedFeed)
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		w.Write(jsonArray)
+		w.Write(responseJson)
 	}
 }
 
@@ -179,18 +182,16 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 
-		finalJsonIndent, err := json.MarshalIndent(sites, "", "\t")
+		indentJson, err := json.MarshalIndent(sites, "", "\t")
 		if err != nil {
 			log.Println("JSON Marshal error")
 		} else {
-			log.Println(string(finalJsonIndent))
+			log.Println(string(indentJson))
 		}
 
 		responseJson, _ := json.Marshal(sites)
-		responseBytes := []byte(responseJson)
-
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		w.Write(responseBytes)
+		w.Write(responseJson)
 	}
 }
