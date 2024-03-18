@@ -66,7 +66,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Logged in as " + loginObject.Username))
+			w.Write([]byte(loginObject.Username))
 		} else {
 			log.Printf("Invalid credentials for %s\n", loginObject.Username)
 
