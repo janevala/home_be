@@ -1,0 +1,26 @@
+{
+	"time": 1711273868253,
+	"title": "RSS Feeds",
+	"sites": [
+		{
+			"uuid": "d0df05cf-0da8-401c-8b93-9dbfb3cb108f",
+			"title": "Phoronix",
+			"url": "https://www.phoronix.com/rss.php"
+		},
+		{
+			"uuid": "d855a60a-b863-4e10-a00c-93dc61da9847",
+			"title": "Slashdot",
+			"url": "https://rss.slashdot.org/Slashdot/slashdotMain"
+		},
+		{
+			"uuid": "59acb74e-b8d2-43b7-821e-d025a0d370ad",
+			"title": "Tom's Hardware",
+			"url": "https://www.tomshardware.com/feeds/all"
+		},
+		{
+			"uuid": "f071a624-2a3f-4fd6-a592-8d6884029d57",
+			"title": "TechCrunch",
+			"url": "https://techcrunch.com/feed/"
+		}
+	]
+}

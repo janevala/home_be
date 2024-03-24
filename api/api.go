@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -22,6 +23,18 @@ type LoginObject struct {
 	GrantType    string `json:"grant_type"`
 	ClientId     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
+}
+
+type Sites struct {
+	Time  int    `json:"time"`
+	Title string `json:"title"`
+	Sites []Site `json:"sites"`
+}
+
+type Site struct {
+	Uuid  string `json:"uuid"`
+	Title string `json:"title"`
+	Url   string `json:"url"`
 }
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -128,18 +141,6 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type sites struct {
-	Time  int    `json:"time"`
-	Title string `json:"title"`
-	Sites []site `json:"sites"`
-}
-
-type site struct {
-	Uuid  string `json:"uuid"`
-	Title string `json:"title"`
-	Url   string `json:"url"`
-}
-
 func RssHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -155,10 +156,24 @@ func RssHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sites := sites{
+		fileBytes, err := os.ReadFile("sites.json")
+		if err != nil {
+			panic(err)
+		}
+
+		sitesModel := Sites{}
+		json.Unmarshal(fileBytes, &sitesModel)
+		sitesString, err := json.MarshalIndent(sitesModel, "", "\t")
+		if err != nil {
+			panic(err)
+		} else {
+			log.Println(string(sitesString))
+		}
+
+		sites := Sites{
 			Time:  int(time.Now().UTC().UnixMilli()),
 			Title: "RSS Feeds",
-			Sites: []site{
+			Sites: []Site{
 				{
 					Uuid:  uuid.NewString(),
 					Title: "Phoronix",
