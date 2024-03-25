@@ -85,59 +85,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AggregateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		w.WriteHeader(http.StatusOK)
-	} else if r.Method == http.MethodGet {
-		if !strings.Contains(r.URL.RawQuery, "code=123") {
-			log.Println("Invalid URI")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Invalid URI"))
-			return
-		}
-
-		feedParser := gofeed.NewParser()
-
-		slashdotFeed, _ := feedParser.ParseURL("https://rss.slashdot.org/Slashdot/slashdotMain")
-		tomsHardwareFeed, _ := feedParser.ParseURL("https://www.tomshardware.com/feeds/all")
-		techCrunchFeed, _ := feedParser.ParseURL("https://techcrunch.com/feed/")
-		phoronixFeed, _ := feedParser.ParseURL("https://www.phoronix.com/rss.php")
-
-		var combinedFeed []*gofeed.Item = []*gofeed.Item{}
-		combinedFeed = append(combinedFeed, slashdotFeed.Items...)
-		combinedFeed = append(combinedFeed, tomsHardwareFeed.Items...)
-		combinedFeed = append(combinedFeed, techCrunchFeed.Items...)
-		combinedFeed = append(combinedFeed, phoronixFeed.Items...)
-
-		var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
-			return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
-		})
-
-		if !isSorted {
-			sort.Slice(combinedFeed, func(i, j int) bool {
-				return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
-			})
-		}
-
-		indentJson, err := json.MarshalIndent(combinedFeed, "", "\t")
-		if err != nil {
-			log.Println("JSON Marshal error")
-		} else {
-			log.Println(string(indentJson))
-		}
-
-		responseJson, _ := json.Marshal(combinedFeed)
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusOK)
-		w.Write(responseJson)
-	}
-}
-
-func RssHandler(obj Sites) http.HandlerFunc {
+func AggregateHandler(sites Sites) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -153,7 +101,60 @@ func RssHandler(obj Sites) http.HandlerFunc {
 				return
 			}
 
-			responseJson, _ := json.Marshal(obj)
+			feedParser := gofeed.NewParser()
+
+			var combinedFeed []*gofeed.Item = []*gofeed.Item{}
+			for i := 0; i < len(sites.Sites); i++ {
+				feed, err := feedParser.ParseURL(sites.Sites[i].Url)
+				if err != nil {
+					panic(err)
+				} else {
+					combinedFeed = append(combinedFeed, feed.Items...)
+				}
+			}
+
+			var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
+				return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
+			})
+
+			if !isSorted {
+				sort.Slice(combinedFeed, func(i, j int) bool {
+					return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
+				})
+			}
+
+			indentJson, err := json.MarshalIndent(combinedFeed, "", "\t")
+			if err != nil {
+				log.Println("JSON Marshal error")
+			} else {
+				log.Println(string(indentJson))
+			}
+
+			responseJson, _ := json.Marshal(combinedFeed)
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusOK)
+			w.Write(responseJson)
+		}
+	}
+}
+
+func RssHandler(sites Sites) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+
+			w.WriteHeader(http.StatusOK)
+		} else if r.Method == http.MethodGet {
+			if !strings.Contains(r.URL.RawQuery, "code=123") {
+				log.Println("Invalid URI")
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid URI"))
+				return
+			}
+
+			responseJson, _ := json.Marshal(sites)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
 			w.Write(responseJson)
