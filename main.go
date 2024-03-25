@@ -1,14 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/janevala/home_be/api"
+
+	S "github.com/janevala/home_be/api"
 )
 
 type LoggerHandler struct {
@@ -19,18 +24,6 @@ type LoggerHandler struct {
 func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.logger.Printf("Received request: %s %s", r.Method, r.URL.Path)
 	h.handler.ServeHTTP(w, r)
-}
-
-type Sites struct {
-	Time  int    `json:"time"`
-	Title string `json:"title"`
-	Sites []Site `json:"sites"`
-}
-
-type Site struct {
-	Uuid  string `json:"uuid"`
-	Title string `json:"title"`
-	Url   string `json:"url"`
 }
 
 func main() {
@@ -53,9 +46,28 @@ func main() {
 
 // NEEDS TO MATCH WITH CLIENT
 func init() {
+	fileBytes, err := os.ReadFile("sites.json")
+	if err != nil {
+		panic(err)
+	}
+
+	sitesModel := S.Sites{}
+	json.Unmarshal(fileBytes, &sitesModel)
+	sitesString, err := json.MarshalIndent(sitesModel, "", "\t")
+	if err != nil {
+		panic(err)
+	} else {
+		sitesModel.Time = int(time.Now().UTC().UnixMilli())
+		for i := 0; i < len(sitesModel.Sites); i++ {
+			sitesModel.Sites[i].Uuid = uuid.NewString()
+		}
+
+		log.Println(string(sitesString))
+	}
+
 	r := mux.NewRouter()
 	r.HandleFunc("/auth", api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/sites", api.RssHandler).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/sites", api.RssHandler(sitesModel)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/aggregate", api.AggregateHandler).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/test", TestHandler).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)

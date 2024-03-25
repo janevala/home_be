@@ -3,11 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
-	"os"
 	"strings"
-	"time"
-
-	"github.com/google/uuid"
 
 	"bytes"
 	"encoding/json"
@@ -16,14 +12,6 @@ import (
 
 	"github.com/mmcdole/gofeed"
 )
-
-type LoginObject struct {
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	GrantType    string `json:"grant_type"`
-	ClientId     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-}
 
 type Sites struct {
 	Time  int    `json:"time"`
@@ -35,6 +23,14 @@ type Site struct {
 	Uuid  string `json:"uuid"`
 	Title string `json:"title"`
 	Url   string `json:"url"`
+}
+
+type LoginObject struct {
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	GrantType    string `json:"grant_type"`
+	ClientId     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
 }
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -141,72 +137,26 @@ func AggregateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RssHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+func RssHandler(obj Sites) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.WriteHeader(http.StatusOK)
-	} else if r.Method == http.MethodGet {
-		if !strings.Contains(r.URL.RawQuery, "code=123") {
-			log.Println("Invalid URI")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Invalid URI"))
-			return
+			w.WriteHeader(http.StatusOK)
+		} else if r.Method == http.MethodGet {
+			if !strings.Contains(r.URL.RawQuery, "code=123") {
+				log.Println("Invalid URI")
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid URI"))
+				return
+			}
+
+			responseJson, _ := json.Marshal(obj)
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusOK)
+			w.Write(responseJson)
 		}
-
-		fileBytes, err := os.ReadFile("sites.json")
-		if err != nil {
-			panic(err)
-		}
-
-		sitesModel := Sites{}
-		json.Unmarshal(fileBytes, &sitesModel)
-		sitesString, err := json.MarshalIndent(sitesModel, "", "\t")
-		if err != nil {
-			panic(err)
-		} else {
-			log.Println(string(sitesString))
-		}
-
-		sites := Sites{
-			Time:  int(time.Now().UTC().UnixMilli()),
-			Title: "RSS Feeds",
-			Sites: []Site{
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Phoronix",
-					Url:   "https://www.phoronix.com/rss.php",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Slashdot",
-					Url:   "https://rss.slashdot.org/Slashdot/slashdotMain",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "Tom's Hardware",
-					Url:   "https://www.tomshardware.com/feeds/all",
-				},
-				{
-					Uuid:  uuid.NewString(),
-					Title: "TechCrunch",
-					Url:   "https://techcrunch.com/feed/",
-				},
-			},
-		}
-
-		indentJson, err := json.MarshalIndent(sites, "", "\t")
-		if err != nil {
-			log.Println("JSON Marshal error")
-		} else {
-			log.Println(string(indentJson))
-		}
-
-		responseJson, _ := json.Marshal(sites)
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.WriteHeader(http.StatusOK)
-		w.Write(responseJson)
 	}
 }
