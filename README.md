@@ -24,6 +24,7 @@ postgres=# \c homebedb
 homebedb=# \q
 go get github.com/lib/pq
 
+homebedb=# \dt feed_items
 
 
 

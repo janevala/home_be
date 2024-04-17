@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -12,6 +13,8 @@ import (
 	"sort"
 
 	"github.com/mmcdole/gofeed"
+
+	_ "github.com/lib/pq"
 )
 
 type Sites struct {
@@ -114,9 +117,8 @@ func AggregateHandler(sites Sites) http.HandlerFunc {
 				}
 			}
 
-			/// here we dump combinedFeed to postresssql
 			connStr := "postgress://postgress:1234@localhost:5432/homebedb?sslmode=disabled"
-			db, err := sql.Open("postgres", connStr)
+			db, err := sql.Open("postgres", connStr) // check _ import, https://www.youtube.com/watch?v=Y7a0sNKdoQk
 
 			if err != nil {
 				log.Fatal(err)
@@ -124,6 +126,19 @@ func AggregateHandler(sites Sites) http.HandlerFunc {
 
 			if err = db.Ping(); err != nil {
 				log.Fatal(err)
+			}
+
+			createTableIfNeeded(db)
+
+			// TODO checks whats actually is in table, and what are we planning to push in there?
+			var pkAccumulated int
+			for i := 0; i < len(combinedFeed); i++ {
+				var pk = insertItem(db, combinedFeed[i])
+				if pk <= pkAccumulated {
+					log.Fatal(fmt.Errorf("PK ERROR"))
+				} else {
+					pkAccumulated = pk
+				}
 			}
 
 			defer db.Close()
@@ -151,6 +166,37 @@ func AggregateHandler(sites Sites) http.HandlerFunc {
 			w.Write(responseJson)
 		}
 	}
+}
+
+func createTableIfNeeded(db *sql.DB) {
+	query := `CREATE TABLE IF NOT EXISTS feed_items (
+		id SERIAL PRIMARY KEY,
+		title VARCHAR(100) NOT NULL,
+		description VARCHAR(100) NOT NULL,
+		link VARCHAR(100) NOT NULL,
+		published timestamp NOT NULL,
+		published_parsed timestamp NOT NULL,
+		created timestamp DEFAULT NOW()
+	)`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func insertItem(db *sql.DB, item *gofeed.Item) int {
+	query := `INSERT INTO feed_items (title, description, link, published, published_parsed) 
+		VALUES ($1, $2, $3, $4) RETURNING id`
+
+	var pk int
+	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed).Scan(&pk)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return pk
 }
 
 func RssHandler(sites Sites) http.HandlerFunc {
