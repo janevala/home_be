@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"strings"
@@ -112,6 +113,20 @@ func AggregateHandler(sites Sites) http.HandlerFunc {
 					combinedFeed = append(combinedFeed, feed.Items...)
 				}
 			}
+
+			/// here we dump combinedFeed to postresssql
+			connStr := "postgress://postgress:1234@localhost:5432/homebedb?sslmode=disabled"
+			db, err := sql.Open("postgres", connStr)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if err = db.Ping(); err != nil {
+				log.Fatal(err)
+			}
+
+			defer db.Close()
 
 			var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
 				return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)

@@ -17,6 +17,16 @@ go get github.com/gorilla/mux
 
 # Docker notes
 ```
+sudo docker run --name postgres-container -e POSTGRES_PASSWORD=1234 -p 5432:5432 -d postgres
+sudo docker exec -ti postgres-container createdb -U postgres homebedb
+sudo docker exec -ti postgres-container psql -U postgres
+postgres=# \c homebedb
+homebedb=# \q
+go get github.com/lib/pq
+
+
+
+
 sudo docker run -d -p 8091:8091 home-backend
 sudo docker build --no-cache -f Dockerfile -t home-backend .
 ```
