@@ -94,6 +94,30 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func RssHandler(sites Sites) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+
+			w.WriteHeader(http.StatusOK)
+		} else if r.Method == http.MethodGet {
+			if !strings.Contains(r.URL.RawQuery, "code=123") {
+				log.Println("Invalid URI")
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid URI"))
+				return
+			}
+
+			responseJson, _ := json.Marshal(sites)
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusOK)
+			w.Write(responseJson)
+		}
+	}
+}
+
 func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
@@ -208,7 +232,7 @@ func insertItem(db *sql.DB, item *gofeed.Item) int {
 	return pk
 }
 
-func RssHandler(sites Sites) http.HandlerFunc {
+func ArchiveHandler(database Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -217,17 +241,9 @@ func RssHandler(sites Sites) http.HandlerFunc {
 
 			w.WriteHeader(http.StatusOK)
 		} else if r.Method == http.MethodGet {
-			if !strings.Contains(r.URL.RawQuery, "code=123") {
-				log.Println("Invalid URI")
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("Invalid URI"))
-				return
-			}
-
-			responseJson, _ := json.Marshal(sites)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
-			w.Write(responseJson)
+			w.Write([]byte("INCOMPLETE"))
 		}
 	}
 }

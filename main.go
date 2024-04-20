@@ -11,9 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/janevala/home_be/api"
 
-	S "github.com/janevala/home_be/api"
+	API "github.com/janevala/home_be/api"
 )
 
 type LoggerHandler struct {
@@ -50,7 +49,7 @@ func init() {
 		panic(err)
 	}
 
-	sites := S.Sites{}
+	sites := API.Sites{}
 	json.Unmarshal(sitesFile, &sites)
 	sitesString, err := json.MarshalIndent(sites, "", "\t")
 	if err != nil {
@@ -69,7 +68,7 @@ func init() {
 		panic(err)
 	}
 
-	database := S.Database{}
+	database := API.Database{}
 	json.Unmarshal(databaseFile, &database)
 	databaseString, err := json.MarshalIndent(database, "", "\t")
 	if err != nil {
@@ -79,9 +78,10 @@ func init() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/auth", api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/sites", api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/aggregate", api.AggregateHandler(sites, database)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/auth", API.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/sites", API.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/aggregate", API.AggregateHandler(sites, database)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/archive", API.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/test", TestHandler).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
 }
@@ -91,47 +91,3 @@ func TestHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Category: %v\n", vars["category"])
 }
-
-/* JSON WRITER BACKUP CODE
-
-sites2 := Sites{
-	Time:  int(time.Now().UTC().UnixMilli()),
-	Title: "RSS Feeds",
-	Sites: []Site{
-		{
-			Uuid:  uuid.NewString(),
-			Title: "Phoronix",
-			Url:   "https://www.phoronix.com/rss.php",
-		},
-		{
-			Uuid:  uuid.NewString(),
-			Title: "Slashdot",
-			Url:   "https://rss.slashdot.org/Slashdot/slashdotMain",
-		},
-		{
-			Uuid:  uuid.NewString(),
-			Title: "Tom's Hardware",
-			Url:   "https://www.tomshardware.com/feeds/all",
-		},
-		{
-			Uuid:  uuid.NewString(),
-			Title: "TechCrunch",
-			Url:   "https://techcrunch.com/feed/",
-		},
-	},
-}
-
-stringOut, _ := json.MarshalIndent(sites2, "", "\t")
-file, err := os.Create("./sites.json")
-if err != nil {
-	panic(err)
-}
-
-lenghtOut, err := io.WriteString(file, string(stringOut))
-if err != nil {
-	panic(err)
-}
-
-log.Println(lenghtOut)
-
-*/
