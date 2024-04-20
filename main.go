@@ -45,13 +45,13 @@ func main() {
 }
 
 func init() {
-	fileBytes, err := os.ReadFile("sites.json")
+	sitesFile, err := os.ReadFile("sites.json")
 	if err != nil {
 		panic(err)
 	}
 
 	sites := S.Sites{}
-	json.Unmarshal(fileBytes, &sites)
+	json.Unmarshal(sitesFile, &sites)
 	sitesString, err := json.MarshalIndent(sites, "", "\t")
 	if err != nil {
 		panic(err)
@@ -64,10 +64,24 @@ func init() {
 		log.Println(string(sitesString))
 	}
 
+	databaseFile, err := os.ReadFile("database.json")
+	if err != nil {
+		panic(err)
+	}
+
+	database := S.Database{}
+	json.Unmarshal(databaseFile, &database)
+	databaseString, err := json.MarshalIndent(database, "", "\t")
+	if err != nil {
+		panic(err)
+	} else {
+		log.Println(string(databaseString))
+	}
+
 	r := mux.NewRouter()
 	r.HandleFunc("/auth", api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/sites", api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/aggregate", api.AggregateHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/aggregate", api.AggregateHandler(sites, database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/test", TestHandler).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
 }

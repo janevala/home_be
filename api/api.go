@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"sort"
@@ -16,6 +17,10 @@ import (
 
 	_ "github.com/lib/pq"
 )
+
+type Database struct {
+	Postgress string `json:"postgress"`
+}
 
 type Sites struct {
 	Time  int    `json:"time"`
@@ -89,7 +94,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AggregateHandler(sites Sites) http.HandlerFunc {
+func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
@@ -117,7 +122,12 @@ func AggregateHandler(sites Sites) http.HandlerFunc {
 				}
 			}
 
-			connStr := "postgress://postgress:1234@localhost:5432/homebedb?sslmode=disabled"
+			for i := 0; i < len(combinedFeed); i++ {
+				titleb64 := base64.StdEncoding.EncodeToString([]byte(combinedFeed[i].Title))
+				combinedFeed[i].GUID = titleb64
+			}
+
+			connStr := database.Postgress
 			db, err := sql.Open("postgres", connStr) // check _ import, https://www.youtube.com/watch?v=Y7a0sNKdoQk
 
 			if err != nil {
@@ -130,7 +140,6 @@ func AggregateHandler(sites Sites) http.HandlerFunc {
 
 			createTableIfNeeded(db)
 
-			// TODO checks whats actually is in table, and what are we planning to push in there?
 			var pkAccumulated int
 			for i := 0; i < len(combinedFeed); i++ {
 				var pk = insertItem(db, combinedFeed[i])
@@ -171,11 +180,12 @@ func AggregateHandler(sites Sites) http.HandlerFunc {
 func createTableIfNeeded(db *sql.DB) {
 	query := `CREATE TABLE IF NOT EXISTS feed_items (
 		id SERIAL PRIMARY KEY,
-		title VARCHAR(100) NOT NULL,
-		description VARCHAR(100) NOT NULL,
-		link VARCHAR(100) NOT NULL,
+		title VARCHAR(200) NOT NULL,
+		description VARCHAR(500) NOT NULL,
+		link VARCHAR(200) NOT NULL,
 		published timestamp NOT NULL,
 		published_parsed timestamp NOT NULL,
+		guid VARCHAR(100) NOT NULL,
 		created timestamp DEFAULT NOW()
 	)`
 
@@ -186,8 +196,7 @@ func createTableIfNeeded(db *sql.DB) {
 }
 
 func insertItem(db *sql.DB, item *gofeed.Item) int {
-	query := `INSERT INTO feed_items (title, description, link, published, published_parsed) 
-		VALUES ($1, $2, $3, $4) RETURNING id`
+	query := `INSERT INTO feed_items (title, description, link, published, published_parsed, guid) VALUES ($1, $2, $3, $4 $5, $6) RETURNING id`
 
 	var pk int
 	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed).Scan(&pk)
