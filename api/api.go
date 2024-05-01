@@ -149,8 +149,8 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 
 			for i := 0; i < len(combinedFeed); i++ {
 				combinedFeed[i].Description = EllipticalTruncate(combinedFeed[i].Description, 990)
-				titleb64 := base64.StdEncoding.EncodeToString([]byte(combinedFeed[i].Title))
-				combinedFeed[i].GUID = titleb64
+				guidString := base64.StdEncoding.EncodeToString([]byte(combinedFeed[i].Link))
+				combinedFeed[i].GUID = guidString
 			}
 
 			connStr := database.Postgres
@@ -227,7 +227,7 @@ func createTableIfNeeded(db *sql.DB) {
 		link VARCHAR(500) NOT NULL,
 		published timestamp NOT NULL,
 		published_parsed timestamp NOT NULL,
-		guid VARCHAR(500) NOT NULL,
+		guid VARCHAR(400) NOT NULL,
 		created timestamp DEFAULT NOW()
 	)`
 
