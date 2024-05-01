@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"unicode"
 
 	"bytes"
 	"encoding/base64"
@@ -19,7 +20,7 @@ import (
 )
 
 type Database struct {
-	Postgress string `json:"postgress"`
+	Postgres string `json:"postgres"`
 }
 
 type Sites struct {
@@ -147,11 +148,12 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 			}
 
 			for i := 0; i < len(combinedFeed); i++ {
+				combinedFeed[i].Description = EllipticalTruncate(combinedFeed[i].Description, 990)
 				titleb64 := base64.StdEncoding.EncodeToString([]byte(combinedFeed[i].Title))
 				combinedFeed[i].GUID = titleb64
 			}
 
-			connStr := database.Postgress
+			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr) // check _ import, https://www.youtube.com/watch?v=Y7a0sNKdoQk
 
 			if err != nil {
@@ -201,15 +203,31 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 	}
 }
 
+// https://stackoverflow.com/a/73939904 find better way with AI if needed
+func EllipticalTruncate(text string, maxLen int) string {
+	lastSpaceIx := maxLen
+	len := 0
+	for i, r := range text {
+		if unicode.IsSpace(r) {
+			lastSpaceIx = i
+		}
+		len++
+		if len > maxLen {
+			return text[:lastSpaceIx] + "..."
+		}
+	}
+	return text
+}
+
 func createTableIfNeeded(db *sql.DB) {
 	query := `CREATE TABLE IF NOT EXISTS feed_items (
 		id SERIAL PRIMARY KEY,
 		title VARCHAR(200) NOT NULL,
-		description VARCHAR(500) NOT NULL,
-		link VARCHAR(200) NOT NULL,
+		description VARCHAR(1000) NOT NULL,
+		link VARCHAR(500) NOT NULL,
 		published timestamp NOT NULL,
 		published_parsed timestamp NOT NULL,
-		guid VARCHAR(100) NOT NULL,
+		guid VARCHAR(500) NOT NULL,
 		created timestamp DEFAULT NOW()
 	)`
 
@@ -220,10 +238,10 @@ func createTableIfNeeded(db *sql.DB) {
 }
 
 func insertItem(db *sql.DB, item *gofeed.Item) int {
-	query := `INSERT INTO feed_items (title, description, link, published, published_parsed, guid) VALUES ($1, $2, $3, $4 $5, $6) RETURNING id`
+	query := `INSERT INTO feed_items (title, description, link, published, published_parsed, guid) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 
 	var pk int
-	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed).Scan(&pk)
+	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.GUID).Scan(&pk)
 
 	if err != nil {
 		log.Fatal(err)
