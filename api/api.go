@@ -238,7 +238,7 @@ func createTableIfNeeded(db *sql.DB) {
 }
 
 func insertItem(db *sql.DB, item *gofeed.Item) int {
-	query := `INSERT INTO feed_items (title, description, link, published, published_parsed, guid) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, guid) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
 
 	var pk int
 	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.GUID).Scan(&pk)
@@ -259,9 +259,46 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 
 			w.WriteHeader(http.StatusOK)
 		} else if r.Method == http.MethodGet {
+			connStr := database.Postgres
+			db, err := sql.Open("postgres", connStr) // check _ import, https://www.youtube.com/watch?v=Y7a0sNKdoQk
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if err = db.Ping(); err != nil {
+				log.Fatal(err)
+			}
+
+			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, guid FROM feed_items")
+			if err2 != nil {
+				log.Fatal(err2)
+			}
+
+			defer rows.Close()
+
+			var title string
+			var description string
+			var link string
+			var published string
+			var published_parsed string /// TODO this should be a timestamp
+			var guid string
+
+			items := []gofeed.Item{}
+			for rows.Next() {
+				err3 := rows.Scan(&title, &description, &link, &published, &published_parsed, &guid)
+				if err3 != nil {
+					log.Fatal(err3)
+				}
+
+				/// TODO add publishedParsed as timestamp here
+				items = append(items, gofeed.Item{Title: title, Description: description, Link: link, Published: published, GUID: guid})
+			}
+
+			responseJson, _ := json.Marshal(items)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("INCOMPLETE"))
+			w.Write(responseJson)
 		}
 	}
 }
