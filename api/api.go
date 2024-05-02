@@ -150,7 +150,7 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 
 			for i := 0; i < len(items); i++ {
 				items[i].Description = EllipticalTruncate(items[i].Description, 990)
-				guidString := base64.StdEncoding.EncodeToString([]byte(EllipticalTruncate(items[i].Link, 90)))
+				guidString := base64.StdEncoding.EncodeToString([]byte(EllipticalTruncate(items[i].Title, 50)))
 				items[i].GUID = guidString
 			}
 
@@ -171,7 +171,6 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 			for i := 0; i < len(items); i++ {
 				var pk = insertItem(db, items[i])
 				if pk == 0 {
-					log.Println("Insert failed, duplicate entry")
 					continue
 				}
 
@@ -233,7 +232,7 @@ func createTableIfNeeded(db *sql.DB) {
 		link VARCHAR(500) NOT NULL,
 		published timestamp NOT NULL,
 		published_parsed timestamp NOT NULL,
-		guid VARCHAR(100) NOT NULL,
+		guid VARCHAR(250) NOT NULL,
 		created timestamp DEFAULT NOW(),
 		UNIQUE (guid)
 	)`
@@ -251,7 +250,7 @@ func insertItem(db *sql.DB, item *gofeed.Item) int {
 	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.GUID).Scan(&pk)
 
 	if err != nil {
-		return 0
+		log.Println("UNHANDLED MINOR ERROR: ", err)
 	}
 
 	return pk
