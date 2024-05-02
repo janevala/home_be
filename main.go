@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	API "github.com/janevala/home_be/api"
+	Api "github.com/janevala/home_be/api"
 )
 
 type LoggerHandler struct {
@@ -49,7 +49,7 @@ func init() {
 		panic(err)
 	}
 
-	sites := API.Sites{}
+	sites := Api.Sites{}
 	json.Unmarshal(sitesFile, &sites)
 	sitesString, err := json.MarshalIndent(sites, "", "\t")
 	if err != nil {
@@ -68,7 +68,7 @@ func init() {
 		panic(err)
 	}
 
-	database := API.Database{}
+	database := Api.Database{}
 	json.Unmarshal(databaseFile, &database)
 	databaseString, err := json.MarshalIndent(database, "", "\t")
 	if err != nil {
@@ -78,10 +78,10 @@ func init() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/auth", API.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/sites", API.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/aggregate", API.AggregateHandler(sites, database)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/archive", API.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/auth", Api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/aggregate", Api.AggregateHandler(sites, database)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/test", TestHandler).Methods(http.MethodGet, http.MethodOptions)
 	http.Handle("/", r)
 }
