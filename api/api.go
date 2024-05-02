@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 
 	"bytes"
@@ -137,20 +138,20 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 
 			feedParser := gofeed.NewParser()
 
-			var combinedFeed []*gofeed.Item = []*gofeed.Item{}
+			var items []*gofeed.Item = []*gofeed.Item{}
 			for i := 0; i < len(sites.Sites); i++ {
 				feed, err := feedParser.ParseURL(sites.Sites[i].Url)
 				if err != nil {
 					panic(err)
 				} else {
-					combinedFeed = append(combinedFeed, feed.Items...)
+					items = append(items, feed.Items...)
 				}
 			}
 
-			for i := 0; i < len(combinedFeed); i++ {
-				combinedFeed[i].Description = EllipticalTruncate(combinedFeed[i].Description, 990)
-				guidString := base64.StdEncoding.EncodeToString([]byte(EllipticalTruncate(combinedFeed[i].Link, 90)))
-				combinedFeed[i].GUID = guidString
+			for i := 0; i < len(items); i++ {
+				items[i].Description = EllipticalTruncate(items[i].Description, 990)
+				guidString := base64.StdEncoding.EncodeToString([]byte(EllipticalTruncate(items[i].Link, 90)))
+				items[i].GUID = guidString
 			}
 
 			connStr := database.Postgres
@@ -167,8 +168,8 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 			createTableIfNeeded(db)
 
 			var pkAccumulated int
-			for i := 0; i < len(combinedFeed); i++ {
-				var pk = insertItem(db, combinedFeed[i])
+			for i := 0; i < len(items); i++ {
+				var pk = insertItem(db, items[i])
 				if pk == 0 {
 					log.Println("Insert failed, duplicate entry")
 					continue
@@ -183,24 +184,24 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 
 			defer db.Close()
 
-			var isSorted bool = sort.SliceIsSorted(combinedFeed, func(i, j int) bool {
-				return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
+			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
+				return items[i].PublishedParsed.After(*items[j].PublishedParsed)
 			})
 
 			if !isSorted {
-				sort.Slice(combinedFeed, func(i, j int) bool {
-					return combinedFeed[i].PublishedParsed.After(*combinedFeed[j].PublishedParsed)
+				sort.Slice(items, func(i, j int) bool {
+					return items[i].PublishedParsed.After(*items[j].PublishedParsed)
 				})
 			}
 
-			indentJson, err := json.MarshalIndent(combinedFeed, "", "\t")
+			indentJson, err := json.MarshalIndent(items, "", "\t")
 			if err != nil {
 				log.Println("JSON Marshal error")
 			} else {
 				log.Println(string(indentJson))
 			}
 
-			responseJson, _ := json.Marshal(combinedFeed)
+			responseJson, _ := json.Marshal(items)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
 			w.Write(responseJson)
@@ -287,7 +288,7 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 			var description string
 			var link string
 			var published string
-			var published_parsed string /// TODO this should be a timestamp
+			var published_parsed *time.Time
 			var guid string
 
 			items := []gofeed.Item{}
@@ -297,8 +298,17 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 					log.Fatal(err3)
 				}
 
-				/// TODO add publishedParsed as timestamp here
-				items = append(items, gofeed.Item{Title: title, Description: description, Link: link, Published: published, GUID: guid})
+				items = append(items, gofeed.Item{Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, GUID: guid})
+			}
+
+			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
+				return items[i].PublishedParsed.After(*items[j].PublishedParsed)
+			})
+
+			if !isSorted {
+				sort.Slice(items, func(i, j int) bool {
+					return items[i].PublishedParsed.After(*items[j].PublishedParsed)
+				})
 			}
 
 			responseJson, _ := json.Marshal(items)
