@@ -21,11 +21,6 @@
 			"uuid": "f071a624-2a3f-4fd6-a592-8d6884029d57",
 			"title": "TechCrunch",
 			"url": "https://techcrunch.com/feed/"
-		},
-		{
-			"uuid": "d0df05cf-0da8-401c-8b93-9dbfb3cb108f",
-			"title": "Ilkka's AI Feed",
-			"url": "https://hypefeedai.azurewebsites.net/api/gethypefeed?apiKey=KGKdDjkusds765ad6s6ds78sad"
 		}
 	]
 }
