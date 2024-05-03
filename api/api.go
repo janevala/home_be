@@ -145,7 +145,7 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 					panic(err)
 				} else {
 					for j := 0; j < len(feed.Items); j++ {
-						items[j].Updated = sites.Title // reusing for another purpose because lazyness
+						feed.Items[j].Updated = sites.Sites[i].Title // reusing for another purpose because lazyness
 					}
 					items = append(items, feed.Items...)
 				}
@@ -235,7 +235,7 @@ func createTableIfNeeded(db *sql.DB) {
 		link VARCHAR(500) NOT NULL,
 		published timestamp NOT NULL,
 		published_parsed timestamp NOT NULL,
-		source VARCHAR(200) NOT NULL,
+		updated VARCHAR(200) NOT NULL,
 		guid VARCHAR(250) NOT NULL,
 		created timestamp DEFAULT NOW(),
 		UNIQUE (guid)
@@ -248,10 +248,10 @@ func createTableIfNeeded(db *sql.DB) {
 }
 
 func insertItem(db *sql.DB, item *gofeed.Item) int {
-	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, guid) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING RETURNING id"
+	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, updated, guid) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING RETURNING id"
 
 	var pk int
-	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.GUID).Scan(&pk)
+	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Updated, item.GUID).Scan(&pk)
 
 	if err != nil {
 		log.Println("UNHANDLED MINOR ERROR: ", err)
@@ -280,7 +280,7 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 				log.Fatal(err)
 			}
 
-			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, source, guid FROM feed_items")
+			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, updated, guid FROM feed_items")
 			if err2 != nil {
 				log.Fatal(err2)
 			}
@@ -292,17 +292,17 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 			var link string
 			var published string
 			var published_parsed *time.Time
-			var source string
+			var updated string
 			var guid string
 
 			items := []gofeed.Item{}
 			for rows.Next() {
-				err3 := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &guid)
+				err3 := rows.Scan(&title, &description, &link, &published, &published_parsed, &updated, &guid)
 				if err3 != nil {
 					log.Fatal(err3)
 				}
 
-				items = append(items, gofeed.Item{Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, Updated: source, GUID: guid})
+				items = append(items, gofeed.Item{Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, Updated: updated, GUID: guid})
 			}
 
 			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
