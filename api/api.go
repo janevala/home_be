@@ -280,7 +280,7 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 				log.Fatal(err)
 			}
 
-			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, updated, guid FROM feed_items")
+			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, source, guid FROM feed_items")
 			if err2 != nil {
 				log.Fatal(err2)
 			}
