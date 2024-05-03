@@ -1,9 +1,16 @@
 # Home BE
+
 Home backend application, to be used together with Home frontend (Flutter client app).
 
-Home BE is app written in Golang. Its inded to provide authentication for client, as well as news resources. This app is intended to be used in Docker container, and runs by default on port 8091. It is simple demo app for learning purposes.
+Home BE is app written in Golang. Its intended to provide authentication for client, and then after login, RSS news resources.
 
-Configure sites.json, and add/remove feed providers.
+It is simple demo app for learning purposes.
+
+This app is meant to be used in Docker container, and runs by default on port 8091.
+
+Configure sites.json, and add/remove feed providers. Configure database.json, for storage connection.
+
+Notes bellow give reference for setting up the containers.
 
 # Go notes
 ```
@@ -25,8 +32,6 @@ homebedb=# \q
 go get github.com/lib/pq
 
 homebedb=# \dt feed_items
-
-
 
 sudo docker run -d -p 8091:8091 home-backend
 sudo docker build --no-cache -f Dockerfile -t home-backend .
