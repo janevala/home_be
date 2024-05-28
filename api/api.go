@@ -139,6 +139,7 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 			feedParser := gofeed.NewParser()
 
 			var items []*gofeed.Item = []*gofeed.Item{}
+			var image gofeed.Image = gofeed.Image{}
 			for i := 0; i < len(sites.Sites); i++ {
 				feed, err := feedParser.ParseURL(sites.Sites[i].Url)
 				if err != nil {
@@ -147,7 +148,13 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 					for j := 0; j < len(feed.Items); j++ {
 						feed.Items[j].Updated = sites.Sites[i].Title // reusing for another purpose because lazyness
 					}
+
 					items = append(items, feed.Items...)
+					if feed.Image != nil {
+						image = *feed.Image
+					} else {
+						image = gofeed.Image{}
+					}
 				}
 			}
 
@@ -172,7 +179,7 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 
 			var pkAccumulated int
 			for i := 0; i < len(items); i++ {
-				var pk = insertItem(db, items[i])
+				var pk = insertItem(db, items[i], &image)
 				if pk == 0 {
 					continue
 				}
@@ -236,6 +243,7 @@ func createTableIfNeeded(db *sql.DB) {
 		published timestamp NOT NULL,
 		published_parsed timestamp NOT NULL,
 		source VARCHAR(200) NOT NULL,
+		thumbnail VARCHAR(500),
 		guid VARCHAR(250) NOT NULL,
 		created timestamp DEFAULT NOW(),
 		UNIQUE (guid)
@@ -247,11 +255,11 @@ func createTableIfNeeded(db *sql.DB) {
 	}
 }
 
-func insertItem(db *sql.DB, item *gofeed.Item) int {
-	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, guid) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING RETURNING id"
+func insertItem(db *sql.DB, item *gofeed.Item, thumbnail *gofeed.Image) int {
+	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, thumbnail, guid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING RETURNING id"
 
 	var pk int
-	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Updated, item.GUID).Scan(&pk)
+	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Updated, thumbnail.URL, item.GUID).Scan(&pk)
 
 	if err != nil {
 		log.Println("UNHANDLED MINOR ERROR: ", err)
