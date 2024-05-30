@@ -151,22 +151,28 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 			feedParser := gofeed.NewParser()
 
 			var items []*gofeed.Item = []*gofeed.Item{}
-			var image gofeed.Image = gofeed.Image{}
 			for i := 0; i < len(sites.Sites); i++ {
 				feed, err := feedParser.ParseURL(sites.Sites[i].Url)
 				if err != nil {
 					panic(err)
 				} else {
+					if feed.Image != nil {
+						for j := 0; j < len(feed.Items); j++ {
+							feed.Items[j].Image = &*feed.Image
+						}
+					} else {
+						for j := 0; j < len(feed.Items); j++ {
+							feed.Items[j].Image = &gofeed.Image{
+								URL: "https://www.google.com",
+							}
+						}
+					}
+
 					for j := 0; j < len(feed.Items); j++ {
-						feed.Items[j].Updated = sites.Sites[i].Title // reusing for another purpose because lazyness
+						feed.Items[j].Updated = sites.Sites[i].Title // reusing for another purpose because lazyness TODO
 					}
 
 					items = append(items, feed.Items...)
-					if feed.Image != nil {
-						image = *feed.Image
-					} else {
-						image = gofeed.Image{}
-					}
 				}
 			}
 
@@ -191,7 +197,7 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 
 			var pkAccumulated int
 			for i := 0; i < len(items); i++ {
-				var pk = insertItem(db, items[i], &image)
+				var pk = insertItem(db, items[i])
 				if pk == 0 {
 					continue
 				}
@@ -267,11 +273,11 @@ func createTableIfNeeded(db *sql.DB) {
 	}
 }
 
-func insertItem(db *sql.DB, item *gofeed.Item, thumbnail *gofeed.Image) int {
+func insertItem(db *sql.DB, item *gofeed.Item) int {
 	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, thumbnail, guid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING RETURNING id"
 
 	var pk int
-	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Updated, thumbnail.URL, item.GUID).Scan(&pk)
+	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Updated, item.Image.URL, item.GUID).Scan(&pk)
 
 	if err != nil {
 		log.Println("UNHANDLED MINOR ERROR: ", err)
