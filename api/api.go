@@ -44,6 +44,18 @@ type LoginObject struct {
 	ClientSecret string `json:"client_secret"`
 }
 
+type ExtendedItem struct {
+	Title           string     `json:"title,omitempty"`
+	Description     string     `json:"description,omitempty"`
+	Content         string     `json:"content,omitempty"`
+	Link            string     `json:"link,omitempty"`
+	Updated         string     `json:"updated,omitempty"`
+	Published       string     `json:"published,omitempty"`
+	PublishedParsed *time.Time `json:"publishedParsed,omitempty"`
+	LinkImage       string     `json:"linkImage,omitempty"`
+	GUID            string     `json:"guid,omitempty"`
+}
+
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -288,7 +300,7 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 				log.Fatal(err)
 			}
 
-			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, source, guid FROM feed_items")
+			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, source, thumbnail, guid FROM feed_items")
 			if err2 != nil {
 				log.Fatal(err2)
 			}
@@ -301,16 +313,17 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 			var published string
 			var published_parsed *time.Time
 			var source string
+			var linkImage string
 			var guid string
 
-			items := []gofeed.Item{}
+			items := []ExtendedItem{}
 			for rows.Next() {
-				err3 := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &guid)
+				err3 := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &guid)
 				if err3 != nil {
 					log.Fatal(err3)
 				}
 
-				items = append(items, gofeed.Item{Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, Updated: source, GUID: guid})
+				items = append(items, ExtendedItem{Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, Updated: source, LinkImage: linkImage, GUID: guid})
 			}
 
 			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
