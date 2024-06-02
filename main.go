@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -82,12 +81,10 @@ func init() {
 	r.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/aggregate", Api.AggregateHandler(sites, database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/test", TestHandler).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/", homeHandler).Methods(http.MethodGet)
 	http.Handle("/", r)
 }
 
-func TestHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Category: %v\n", vars["category"])
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Hello, World!"))
 }
