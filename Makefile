@@ -25,6 +25,9 @@ run_linux:
 run_arm:
 	./${BINARY_NAME}_${GOARCH_ARM64}
 
+run_production:
+	./${BINARY_NAME}_${GOARCH_ARM64}
+
 clean:
 	go clean
 	rm -rf vendor

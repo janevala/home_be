@@ -26,14 +26,6 @@ go get github.com/lib/pq
 
 # Docker notes
 ```
-sudo docker run --name postgres-container -e POSTGRES_PASSWORD=1234 -p 5432:5432 -d postgres
-sudo docker exec -ti postgres-container createdb -U postgres homebedb
-sudo docker exec -ti postgres-container psql -U postgres
-postgres=# \c homebedb
-homebedb=# \q
-
-homebedb=# \dt feed_items
-
 sudo docker run -d -p 8091:8091 home-backend
 sudo docker build --no-cache -f Dockerfile -t home-backend .
 ```

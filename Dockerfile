@@ -4,4 +4,4 @@ ENV PATH="/usr/bin:${PATH}"
 WORKDIR /homebe
 COPY . .
 EXPOSE 8091
-CMD ["go", "run", "main.go"]
+CMD ["make", "run_production"]
