@@ -10,27 +10,26 @@ dep:
 build:
 	 go build -o ${BINARY_NAME}_${GOARCH} main.go
 
-build_linux:
+linux_build:
 	GOOS=linux GOARCH=${GOARCH_AMD64} go build -o ${BINARY_NAME}_${GOARCH_AMD64} main.go
 
-build_arm:
+arm_build:
 	GOOS=linux GOARCH=${GOARCH_ARM64} go build -o ${BINARY_NAME}_${GOARCH_ARM64} main.go
 
 run:
 	go run main.go
 
-run_linux:
+linux_run:
 	./${BINARY_NAME}_${GOARCH_AMD64}
 
-run_arm:
+arm_run:
 	./${BINARY_NAME}_${GOARCH_ARM64}
 
-run_production:
-	./${BINARY_NAME}_${GOARCH_ARM64}
+production_build_and_run:
+	GOOS=linux GOARCH=${GOARCH_ARM64} go build -o ${BINARY_NAME}_${GOARCH_ARM64} main.go && ./${BINARY_NAME}_${GOARCH_ARM64}
 
 clean:
 	go clean
 	rm -rf vendor
 	rm -f ${BINARY_NAME}_${GOARCH_AMD64}
 	rm -f ${BINARY_NAME}_${GOARCH_ARM64}
-
