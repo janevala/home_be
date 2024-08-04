@@ -1,14 +1,29 @@
 BINARY_NAME=home_be
-GOARCH=amd64
+
+GOARCH_AMD64=amd64
+GOARCH_ARM64=arm64
+GOARCH=${GOARCH_AMD64}
 
 dep:
 	go mod tidy && go mod vendor && go fmt
 
+build:
+	 go build -o ${BINARY_NAME}_${GOARCH} main.go
+
+build_linux:
+	GOOS=linux GOARCH=${GOARCH_AMD64} go build -o ${BINARY_NAME}_${GOARCH_AMD64} main.go
+
+build_arm:
+	GOOS=linux GOARCH=${GOARCH_ARM64} go build -o ${BINARY_NAME}_${GOARCH_ARM64} main.go
+
 run:
 	go run main.go
 
-build:
-	 go build -o ${BINARY_NAME}_${GOARCH} main.go
+run_linux:
+	./${BINARY_NAME}_${GOARCH_AMD64}
+
+run_arm:
+	./${BINARY_NAME}_${GOARCH_ARM64}
 
 clean:
 	go clean

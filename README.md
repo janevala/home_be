@@ -20,6 +20,8 @@ go mod tidy
 go get github.com/mmcdole/gofeed
 go get github.com/google/uuid
 go get github.com/gorilla/mux
+go get github.com/lib/pq
+
 ```
 
 # Docker notes
@@ -29,7 +31,6 @@ sudo docker exec -ti postgres-container createdb -U postgres homebedb
 sudo docker exec -ti postgres-container psql -U postgres
 postgres=# \c homebedb
 homebedb=# \q
-go get github.com/lib/pq
 
 homebedb=# \dt feed_items
 

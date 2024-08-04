@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -182,35 +181,6 @@ func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
 				items[i].GUID = guidString
 			}
 
-			connStr := database.Postgres
-			db, err := sql.Open("postgres", connStr)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if err = db.Ping(); err != nil {
-				log.Fatal(err)
-			}
-
-			createTableIfNeeded(db)
-
-			var pkAccumulated int
-			for i := 0; i < len(items); i++ {
-				var pk = insertItem(db, items[i])
-				if pk == 0 {
-					continue
-				}
-
-				if pk <= pkAccumulated {
-					log.Fatal(fmt.Errorf("PK ERROR"))
-				} else {
-					pkAccumulated = pk
-				}
-			}
-
-			defer db.Close()
-
 			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
 				return items[i].PublishedParsed.After(*items[j].PublishedParsed)
 			})
@@ -250,40 +220,6 @@ func EllipticalTruncate(text string, maxLen int) string {
 		}
 	}
 	return text
-}
-
-func createTableIfNeeded(db *sql.DB) {
-	query := `CREATE TABLE IF NOT EXISTS feed_items (
-		id SERIAL PRIMARY KEY,
-		title VARCHAR(200) NOT NULL,
-		description VARCHAR(1000) NOT NULL,
-		link VARCHAR(500) NOT NULL,
-		published timestamp NOT NULL,
-		published_parsed timestamp NOT NULL,
-		source VARCHAR(200) NOT NULL,
-		thumbnail VARCHAR(500),
-		guid VARCHAR(250) NOT NULL,
-		created timestamp DEFAULT NOW(),
-		UNIQUE (guid)
-	)`
-
-	_, err := db.Exec(query)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func insertItem(db *sql.DB, item *gofeed.Item) int {
-	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, thumbnail, guid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING RETURNING id"
-
-	var pk int
-	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Updated, item.Image.URL, item.GUID).Scan(&pk)
-
-	if err != nil {
-		log.Println("UNHANDLED MINOR ERROR: ", err)
-	}
-
-	return pk
 }
 
 func ArchiveHandler(database Database) http.HandlerFunc {
