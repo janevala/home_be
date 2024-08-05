@@ -1,9 +1,19 @@
 #!/bin/bash
 
-# Build and run ARM for Raspberry Pi
+ARC=$(uname -m)
 
-if [ ! -f "home_be_arm64" ]; then
-    /usr/bin/make production_build_and_run
-else
-    ./home_be_arm64
+if [ "$ARC" = "aarch64" ]; then
+    if [ ! -f "home_be_arm64" ]; then
+        /usr/bin/make build_and_run
+    else
+        ./home_be_arm64
+    fi
+fi
+
+if [ "$ARC" = "x86_64" ]; then
+    if [ ! -f "home_be_amd64" ]; then
+        /usr/bin/make build_and_run
+    else
+        ./home_be_amd64
+    fi
 fi
