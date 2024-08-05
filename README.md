@@ -26,6 +26,10 @@ go get github.com/lib/pq
 
 # Docker notes
 ```
-sudo docker run -d -p 8091:8091 home-backend
-sudo docker build --no-cache -f Dockerfile -t home-backend .
+sudo docker network create home-network
+
+sudo docker build --no-cache -f Dockerfile -t news-backend .
+sudo docker run --name api-host --network home-network -p 8091:8091 -d news-backend
+
+docker network connect home-network api-host
 ```
