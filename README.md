@@ -31,5 +31,5 @@ sudo docker network create home-network
 sudo docker build --no-cache -f Dockerfile -t news-backend .
 sudo docker run --name api-host --network home-network -p 8091:8091 -d news-backend
 
-docker network connect home-network api-host
+sudo docker network connect home-network api-host
 ```
