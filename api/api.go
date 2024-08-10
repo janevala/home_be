@@ -6,15 +6,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"unicode"
 
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"sort"
-
-	"github.com/mmcdole/gofeed"
 
 	_ "github.com/lib/pq"
 )
@@ -129,97 +125,6 @@ func RssHandler(sites Sites) http.HandlerFunc {
 			w.Write(responseJson)
 		}
 	}
-}
-
-func AggregateHandler(sites Sites, database Database) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-
-			w.WriteHeader(http.StatusOK)
-		} else if r.Method == http.MethodGet {
-			if !strings.Contains(r.URL.RawQuery, "code=123") {
-				log.Println("Invalid URI")
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("Invalid URI"))
-				return
-			}
-
-			feedParser := gofeed.NewParser()
-
-			var items []*gofeed.Item = []*gofeed.Item{}
-			for i := 0; i < len(sites.Sites); i++ {
-				feed, err := feedParser.ParseURL(sites.Sites[i].Url)
-				if err != nil {
-					panic(err)
-				} else {
-					if feed.Image != nil {
-						for j := 0; j < len(feed.Items); j++ {
-							feed.Items[j].Image = &*feed.Image
-						}
-					} else {
-						for j := 0; j < len(feed.Items); j++ {
-							feed.Items[j].Image = &gofeed.Image{
-								URL: "https://www.google.com",
-							}
-						}
-					}
-
-					for j := 0; j < len(feed.Items); j++ {
-						feed.Items[j].Updated = sites.Sites[i].Title // reusing for another purpose because lazyness TODO
-					}
-
-					items = append(items, feed.Items...)
-				}
-			}
-
-			for i := 0; i < len(items); i++ {
-				items[i].Description = EllipticalTruncate(items[i].Description, 990)
-				guidString := base64.StdEncoding.EncodeToString([]byte(EllipticalTruncate(items[i].Title, 50)))
-				items[i].GUID = guidString
-			}
-
-			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
-				return items[i].PublishedParsed.After(*items[j].PublishedParsed)
-			})
-
-			if !isSorted {
-				sort.Slice(items, func(i, j int) bool {
-					return items[i].PublishedParsed.After(*items[j].PublishedParsed)
-				})
-			}
-
-			indentJson, err := json.MarshalIndent(items, "", "\t")
-			if err != nil {
-				log.Println("JSON Marshal error")
-			} else {
-				log.Println(string(indentJson))
-			}
-
-			responseJson, _ := json.Marshal(items)
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.WriteHeader(http.StatusOK)
-			w.Write(responseJson)
-		}
-	}
-}
-
-// https://stackoverflow.com/a/73939904 find better way with AI if needed
-func EllipticalTruncate(text string, maxLen int) string {
-	lastSpaceIx := maxLen
-	len := 0
-	for i, r := range text {
-		if unicode.IsSpace(r) {
-			lastSpaceIx = i
-		}
-		len++
-		if len > maxLen {
-			return text[:lastSpaceIx] + "..."
-		}
-	}
-	return text
 }
 
 func ArchiveHandler(database Database) http.HandlerFunc {

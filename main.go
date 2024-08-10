@@ -79,7 +79,6 @@ func init() {
 	r := mux.NewRouter()
 	r.HandleFunc("/auth", Api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/aggregate", Api.AggregateHandler(sites, database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/", homeHandler).Methods(http.MethodGet)
 	http.Handle("/", r)
