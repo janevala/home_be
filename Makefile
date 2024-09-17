@@ -10,11 +10,13 @@ ifeq ($(BUILDARCH),x86_64)
 endif
 
 help:
-	@echo "make dep - Install dependencies for compiling the binary file"
-	@echo "make build - Build the binary file"
-	@echo "make run - Run the binary file"
-	@echo "make build_and_run - Build and run the binary file"
 	@echo "make clean - Remove the binary file"
+	@echo "make build - Build the binary file"
+	@echo "make dep - Install dependencies for compiling the binary file"
+	@echo "make run - Run the binary file"
+	@echo
+	@echo "Run all make commands at once:"
+	@echo "make clean && make build && make dep && make run"
 
 dep:
 	go mod tidy && go mod vendor && go fmt
