@@ -189,7 +189,8 @@ func Explain() http.HandlerFunc {
 				panic("Failed to create talkative client")
 			}
 
-			model := "qwen2.5-coder:14b"
+			model := "mistral:7b"
+			//model := "qwen2.5-coder:14b"
 
 			responseAnswer := talkative.ChatResponse{}
 			callback := func(cr *talkative.ChatResponse, err error) {
