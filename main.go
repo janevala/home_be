@@ -80,6 +80,7 @@ func init() {
 	r.HandleFunc("/auth", Api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/", homeHandler).Methods(http.MethodGet)
 	http.Handle("/", r)
 }

@@ -27,6 +27,7 @@ build:
 	go get github.com/mmcdole/gofeed
 	go get github.com/google/uuid
 	go get github.com/lib/pq
+	go get github.com/rifaideen/talkative
 	GOARCH=${BUILDARCH} go build -o ${BINARY_NAME}_${BUILDARCH} main.go
 
 run:
