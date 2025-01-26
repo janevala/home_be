@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/examples/todo/schema"
 
 	Api "github.com/janevala/home_be/api"
 )
@@ -82,7 +83,7 @@ func init() {
 	r.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/query", handleQuery("ASDF")).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/graphql", handleQuery("ASDF")).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/", homeHandler).Methods(http.MethodGet)
 	http.Handle("/", r)
 }
@@ -91,15 +92,41 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello, World!"))
 }
 
+type postData struct {
+	Query     string                 `json:"query"`
+	Operation string                 `json:"operationName"`
+	Variables map[string]interface{} `json:"variables"`
+}
+
 func handleQuery(q string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.WriteHeader(http.StatusOK)
 		} else if r.Method == http.MethodPost {
+
+			var p postData
+			if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+				w.WriteHeader(400)
+				return
+			}
+			result := graphql.Do(graphql.Params{
+				Context:        r.Context(),
+				Schema:         schema.TodoSchema,
+				RequestString:  p.Query,
+				VariableValues: p.Variables,
+				OperationName:  p.Operation,
+			})
+
+			if err := json.NewEncoder(w).Encode(result); err != nil {
+				log.Printf("could not write result to response: %s", err)
+			}
+
+			//// INCOMPLETE DABBLING
+
 			fields := graphql.Fields{
 				"hello": &graphql.Field{
 					Type: graphql.String,
