@@ -28,6 +28,7 @@ build:
 	go get github.com/google/uuid
 	go get github.com/lib/pq
 	go get github.com/rifaideen/talkative
+	go get github.com/graphql-go/graphql
 	GOARCH=${BUILDARCH} go build -o ${BINARY_NAME}_${BUILDARCH} main.go
 
 run:

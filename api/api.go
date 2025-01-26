@@ -181,43 +181,7 @@ func Explain() http.HandlerFunc {
 				log.Printf("Body: No Body Supplied\n")
 			}
 
-			var question string = questionObject.Question
-
-			client, err := talkative.New("http://127.0.0.1:11434")
-
-			if err != nil {
-				panic("Failed to create talkative client")
-			}
-
-			model := "mistral:7b"
-			//model := "qwen2.5-coder:14b"
-
-			responseAnswer := talkative.ChatResponse{}
-			callback := func(cr *talkative.ChatResponse, err error) {
-				if err != nil {
-					log.Println("Error in callback")
-					return
-				}
-
-				responseAnswer = *cr
-			}
-
-			message := talkative.ChatMessage{
-				Role:    talkative.USER,
-				Content: question,
-			}
-
-			done, err := client.Chat(model, callback, &talkative.ChatParams{
-				Stream: pointFalse(),
-			}, message)
-
-			if err != nil {
-				panic(err)
-			}
-
-			<-done
-
-			answerItem := AnswerItem{Answer: responseAnswer.Message.Content}
+			answerItem := queryAI(questionObject)
 
 			responseJson, _ := json.Marshal(answerItem)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -225,6 +189,48 @@ func Explain() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 		}
 	}
+}
+
+func queryAI(q QuestionItem) AnswerItem {
+	var question string = q.Question
+
+	client, err := talkative.New("http://127.0.0.1:11434")
+
+	if err != nil {
+		panic("Failed to create talkative client")
+	}
+
+	model := "mistral:7b"
+	//model := "qwen2.5-coder:14b"
+
+	responseAnswer := talkative.ChatResponse{}
+	callback := func(cr *talkative.ChatResponse, err error) {
+		if err != nil {
+			log.Println("Error in callback")
+			return
+		}
+
+		responseAnswer = *cr
+	}
+
+	message := talkative.ChatMessage{
+		Role:    talkative.USER,
+		Content: question,
+	}
+
+	done, err := client.Chat(model, callback, &talkative.ChatParams{
+		Stream: pointFalse(),
+	}, message)
+
+	if err != nil {
+		panic(err)
+	}
+
+	<-done
+
+	answerItem := AnswerItem{Answer: responseAnswer.Message.Content}
+
+	return answerItem
 }
 
 // fix this hack

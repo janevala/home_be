@@ -22,7 +22,7 @@ go get github.com/google/uuid
 go get github.com/gorilla/mux
 go get github.com/lib/pq
 go get github.com/rifaideen/talkative
-
+go get github.com/graphql-go/graphql
 ```
 
 # Docker notes

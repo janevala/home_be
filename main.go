@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/graphql-go/graphql"
 
 	Api "github.com/janevala/home_be/api"
 )
@@ -81,10 +82,55 @@ func init() {
 	r.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/query", handleQuery("ASDF")).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/", homeHandler).Methods(http.MethodGet)
 	http.Handle("/", r)
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello, World!"))
+}
+
+func handleQuery(q string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+
+			w.WriteHeader(http.StatusOK)
+		} else if r.Method == http.MethodPost {
+			fields := graphql.Fields{
+				"hello": &graphql.Field{
+					Type: graphql.String,
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						return q, nil
+					},
+				},
+			}
+
+			rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
+			schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
+			schema, err := graphql.NewSchema(schemaConfig)
+			if err != nil {
+				log.Fatalf("failed to create new schema, error: %v", err)
+			}
+
+			query := `
+				{
+					hello
+				}
+			`
+			params := graphql.Params{Schema: schema, RequestString: query}
+			r := graphql.Do(params)
+			if len(r.Errors) > 0 {
+				log.Fatalf("failed to execute graphql operation, errors: %+v", r.Errors)
+			}
+			json, _ := json.Marshal(r)
+
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Write(json)
+			w.WriteHeader(http.StatusOK)
+		}
+	}
 }
