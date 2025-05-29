@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BACKEND CONFIGS</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+</head>
+<body>
+    <header>
+        <h2>BACKEND</h2>
+    </header>
+    <main>
+        <div>
+            <h3>Configs:</h3>
+            <p>GoVersion: {{.GoVersion}}</p>
+            <p>NumCPU: {{.NumCPU}}</p>
+            <p>NumGoroutine: {{.NumGoroutine}}</p>
+            <p>Database: {{.Database}}</p>
+            <p>Sites: {{.Sites}}</p>
+        </div>
+    
+    </main>
+    <footer>
+        <p>{{.BuildTime}}</p>
+    </footer>
+</html>

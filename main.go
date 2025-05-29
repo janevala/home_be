@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -84,12 +85,31 @@ func init() {
 	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/graphql", handleQuery("ASDF")).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/", homeHandler).Methods(http.MethodGet)
-	http.Handle("/", r)
-}
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles("index.html")
+		if err != nil {
+			http.Error(w, "Could not load template", http.StatusInternalServerError)
+			return
+		}
 
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello, World!"))
+		data := map[string]interface{}{
+			"BuildTime":    time.Now().Format(time.RFC3339),
+			"GoVersion":    runtime.Version(),
+			"NumCPU":       runtime.NumCPU(),
+			"NumGoroutine": runtime.NumGoroutine(),
+			"Database":     database,
+			"Sites":        sites,
+		}
+
+		if err := tmpl.Execute(w, data); err != nil {
+			http.Error(w, "Could not execute template", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("Request served: %s %s", r.Method, r.URL.Path)
+	}).Methods(http.MethodGet)
+
+	log.Println("Setting up routes...")
+	http.Handle("/", r)
 }
 
 type postData struct {
