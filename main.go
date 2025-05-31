@@ -79,15 +79,14 @@ func init() {
 		log.Println(string(databaseString))
 	}
 
-	r := mux.NewRouter()
-	r.HandleFunc("/auth", Api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/graphql", handleQuery("ASDF")).Methods(http.MethodPost, http.MethodOptions)
-
-	r2 := http.NewServeMux()
-	r2.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	muxRouter := mux.NewRouter()
+	muxRouter.HandleFunc("/auth", Api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
+	muxRouter.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
+	muxRouter.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
+	muxRouter.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
+	httpRouter := http.NewServeMux()
+	httpRouter.HandleFunc("POST /graphql", graphQlHandler("Hello, GraphQL!"))
+	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
 			http.Error(w, "Could not load template", http.StatusInternalServerError)
@@ -110,12 +109,12 @@ func init() {
 	})
 
 	log.Println("Setting up routes...")
-	http.Handle("/", r2)
-	http.Handle("/auth", r)
-	http.Handle("/sites", r)
-	http.Handle("/archive", r)
-	http.Handle("/explain", r)
-	http.Handle("/graphql", r)
+	http.Handle("/auth", muxRouter)
+	http.Handle("/sites", muxRouter)
+	http.Handle("/archive", muxRouter)
+	http.Handle("/explain", muxRouter)
+	http.Handle("/graphql", httpRouter)
+	http.Handle("/", httpRouter)
 }
 
 type postData struct {
@@ -124,7 +123,7 @@ type postData struct {
 	Variables map[string]interface{} `json:"variables"`
 }
 
-func handleQuery(q string) http.HandlerFunc {
+func graphQlHandler(q string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
