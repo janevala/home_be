@@ -85,13 +85,14 @@ func init() {
 	r.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/graphql", handleQuery("ASDF")).Methods(http.MethodPost, http.MethodOptions)
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+	r2 := http.NewServeMux()
+	r2.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
 			http.Error(w, "Could not load template", http.StatusInternalServerError)
 			return
 		}
-
 		data := map[string]interface{}{
 			"BuildTime":    time.Now().Format(time.RFC3339),
 			"GoVersion":    runtime.Version(),
@@ -106,10 +107,15 @@ func init() {
 			return
 		}
 		log.Printf("Request served: %s %s", r.Method, r.URL.Path)
-	}).Methods(http.MethodGet)
+	})
 
 	log.Println("Setting up routes...")
-	http.Handle("/", r)
+	http.Handle("/", r2)
+	http.Handle("/auth", r)
+	http.Handle("/sites", r)
+	http.Handle("/archive", r)
+	http.Handle("/explain", r)
+	http.Handle("/graphql", r)
 }
 
 type postData struct {
