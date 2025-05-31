@@ -6,11 +6,15 @@ Home BE is app written in Golang. Its intended to provide authentication for cli
 
 It is simple demo app for learning purposes.
 
-This app is meant to be used in Docker container, and runs by default on port 8091.
+Go propgram runs as a microservice in Docker container, and listens port 8091.
 
 Configure sites.json, and add/remove feed providers. Configure database.json, for storage connection.
 
 Notes bellow give reference for setting up the containers.
+
+Separate Home BE Crawler is running as a different microservice, and crawls RSS feeds online. This Programs makes them available through various APIs.
+
+AI integration to Ollama local AI instance is integrated through Talkative plugin for Golang.
 
 # Go notes
 ```
