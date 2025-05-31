@@ -14,6 +14,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/examples/todo/schema"
 
+	Ai "github.com/janevala/home_be/ai"
 	Api "github.com/janevala/home_be/api"
 )
 
@@ -83,7 +84,12 @@ func init() {
 	muxRouter.HandleFunc("/auth", Api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
 	muxRouter.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
 	muxRouter.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
-	muxRouter.HandleFunc("/explain", Api.Explain()).Methods(http.MethodPost, http.MethodOptions)
+	muxRouter.HandleFunc("/explain", Ai.Explain()).Methods(http.MethodPost, http.MethodOptions)
+	http.Handle("/auth", muxRouter)
+	http.Handle("/sites", muxRouter)
+	http.Handle("/archive", muxRouter)
+	http.Handle("/explain", muxRouter)
+
 	httpRouter := http.NewServeMux()
 	httpRouter.HandleFunc("POST /graphql", graphQlHandler("Hello, GraphQL!"))
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
@@ -108,11 +114,6 @@ func init() {
 		log.Printf("Request served: %s %s", r.Method, r.URL.Path)
 	})
 
-	log.Println("Setting up routes...")
-	http.Handle("/auth", muxRouter)
-	http.Handle("/sites", muxRouter)
-	http.Handle("/archive", muxRouter)
-	http.Handle("/explain", muxRouter)
 	http.Handle("/graphql", httpRouter)
 	http.Handle("/", httpRouter)
 }
@@ -124,65 +125,56 @@ type postData struct {
 }
 
 func graphQlHandler(q string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+	return func(w http.ResponseWriter, req *http.Request) {
+		var p postData
+		if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+			w.WriteHeader(400)
+			return
+		}
+		result := graphql.Do(graphql.Params{
+			Context:        req.Context(),
+			Schema:         schema.TodoSchema,
+			RequestString:  p.Query,
+			VariableValues: p.Variables,
+			OperationName:  p.Operation,
+		})
 
-			w.WriteHeader(http.StatusOK)
-		} else if r.Method == http.MethodPost {
+		if err := json.NewEncoder(w).Encode(result); err != nil {
+			log.Printf("could not write result to response: %s", err)
+		}
 
-			var p postData
-			if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-				w.WriteHeader(400)
-				return
-			}
-			result := graphql.Do(graphql.Params{
-				Context:        r.Context(),
-				Schema:         schema.TodoSchema,
-				RequestString:  p.Query,
-				VariableValues: p.Variables,
-				OperationName:  p.Operation,
-			})
+		//// INCOMPLETE DABBLING
 
-			if err := json.NewEncoder(w).Encode(result); err != nil {
-				log.Printf("could not write result to response: %s", err)
-			}
-
-			//// INCOMPLETE DABBLING
-
-			fields := graphql.Fields{
-				"hello": &graphql.Field{
-					Type: graphql.String,
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						return q, nil
-					},
+		fields := graphql.Fields{
+			"hello": &graphql.Field{
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return q, nil
 				},
-			}
+			},
+		}
 
-			rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
-			schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
-			schema, err := graphql.NewSchema(schemaConfig)
-			if err != nil {
-				log.Fatalf("failed to create new schema, error: %v", err)
-			}
+		rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
+		schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
+		schema, err := graphql.NewSchema(schemaConfig)
+		if err != nil {
+			log.Fatalf("failed to create new schema, error: %v", err)
+		}
 
-			query := `
+		query := `
 				{
 					hello
 				}
 			`
-			params := graphql.Params{Schema: schema, RequestString: query}
-			r := graphql.Do(params)
-			if len(r.Errors) > 0 {
-				log.Fatalf("failed to execute graphql operation, errors: %+v", r.Errors)
-			}
-			json, _ := json.Marshal(r)
-
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Write(json)
-			w.WriteHeader(http.StatusOK)
+		params := graphql.Params{Schema: schema, RequestString: query}
+		res := graphql.Do(params)
+		if len(res.Errors) > 0 {
+			log.Fatalf("failed to execute graphql operation, errors: %+v", res.Errors)
 		}
+		json, _ := json.Marshal(res)
+
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Write(json)
+		w.WriteHeader(http.StatusOK)
 	}
 }

@@ -13,7 +13,6 @@ import (
 	"sort"
 
 	_ "github.com/lib/pq"
-	"github.com/rifaideen/talkative"
 )
 
 type Database struct {
@@ -52,32 +51,24 @@ type ExtendedItem struct {
 	GUID            string     `json:"guid,omitempty"`
 }
 
-type QuestionItem struct {
-	Question string `json:"question,omitempty"`
-}
-
-type AnswerItem struct {
-	Answer string `json:"answer,omitempty"`
-}
-
-func AuthHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
+func AuthHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		w.WriteHeader(http.StatusOK)
-	} else if r.Method == http.MethodPost {
+	} else if req.Method == http.MethodPost {
 		var bodyBytes []byte
 		var err error
 
-		if r.Body != nil {
-			bodyBytes, err = io.ReadAll(r.Body)
+		if req.Body != nil {
+			bodyBytes, err = io.ReadAll(req.Body)
 			if err != nil {
 				log.Printf("Body reading error")
 				return
 			}
-			defer r.Body.Close()
+			defer req.Body.Close()
 		}
 
 		var loginObject LoginObject
@@ -113,15 +104,15 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RssHandler(sites Sites) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodOptions {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.WriteHeader(http.StatusOK)
-		} else if r.Method == http.MethodGet {
-			if !strings.Contains(r.URL.RawQuery, "code=123") {
+		} else if req.Method == http.MethodGet {
+			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				log.Println("Invalid URI")
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte("Invalid URI"))
@@ -136,118 +127,15 @@ func RssHandler(sites Sites) http.HandlerFunc {
 	}
 }
 
-func Explain() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-
-			w.WriteHeader(http.StatusOK)
-		} else if r.Method == http.MethodPost {
-			if !strings.Contains(r.URL.RawQuery, "code=123") {
-				log.Println("Invalid URI")
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("Invalid URI"))
-				return
-			}
-
-			var bodyBytes []byte
-			var err error
-
-			if r.Body != nil {
-				bodyBytes, err = io.ReadAll(r.Body)
-				if err != nil {
-					log.Printf("Body reading error")
-					return
-				}
-				defer r.Body.Close()
-			}
-
-			var questionObject QuestionItem
-			var jsonString bytes.Buffer
-
-			if len(bodyBytes) > 0 {
-				if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
-					log.Println("JSON parse error")
-					return
-				}
-				err := json.Unmarshal(bodyBytes, &questionObject)
-				if err != nil {
-					log.Println("JSON Unmarshal error")
-					return
-				}
-			} else {
-				log.Printf("Body: No Body Supplied\n")
-			}
-
-			answerItem := queryAI(questionObject)
-
-			responseJson, _ := json.Marshal(answerItem)
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Write(responseJson)
-			w.WriteHeader(http.StatusOK)
-		}
-	}
-}
-
-func queryAI(q QuestionItem) AnswerItem {
-	var question string = q.Question
-
-	client, err := talkative.New("http://127.0.0.1:11434")
-
-	if err != nil {
-		panic("Failed to create talkative client")
-	}
-
-	model := "mistral:7b"
-	//model := "qwen2.5-coder:14b"
-
-	responseAnswer := talkative.ChatResponse{}
-	callback := func(cr *talkative.ChatResponse, err error) {
-		if err != nil {
-			log.Println("Error in callback")
-			return
-		}
-
-		responseAnswer = *cr
-	}
-
-	message := talkative.ChatMessage{
-		Role:    talkative.USER,
-		Content: question,
-	}
-
-	done, err := client.Chat(model, callback, &talkative.ChatParams{
-		Stream: pointFalse(),
-	}, message)
-
-	if err != nil {
-		panic(err)
-	}
-
-	<-done
-
-	answerItem := AnswerItem{Answer: responseAnswer.Message.Content}
-
-	return answerItem
-}
-
-// fix this hack
-func pointFalse() *bool {
-	b := false
-	return &b
-}
-
 func ArchiveHandler(database Database) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodOptions {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.WriteHeader(http.StatusOK)
-		} else if r.Method == http.MethodGet {
+		} else if req.Method == http.MethodGet {
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
 
