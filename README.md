@@ -38,3 +38,6 @@ sudo docker run --name api-host --network home-network -p 8091:8091 -d news-back
 
 sudo docker network connect home-network api-host
 ```
+
+# TODO's
+- [ ] Unify logging
