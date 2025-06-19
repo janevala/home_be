@@ -1,4 +1,4 @@
-FROM debian:latest
+FROM debian:stable-slim AS builder
 RUN apt update && apt install -y git golang
 RUN apt install -y make
 ENV PATH="/usr/bin:${PATH}"
