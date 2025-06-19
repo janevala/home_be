@@ -52,13 +52,14 @@ type ExtendedItem struct {
 }
 
 func AuthHandler(w http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodOptions {
+	switch req.Method {
+	case http.MethodOptions:
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		w.WriteHeader(http.StatusOK)
-	} else if req.Method == http.MethodPost {
+	case http.MethodPost:
 		var bodyBytes []byte
 		var err error
 
@@ -105,13 +106,14 @@ func AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 func RssHandler(sites Sites) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodOptions {
+		switch req.Method {
+		case http.MethodOptions:
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.WriteHeader(http.StatusOK)
-		} else if req.Method == http.MethodGet {
+		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				log.Println("Invalid URI")
 				w.WriteHeader(http.StatusBadRequest)
@@ -129,13 +131,14 @@ func RssHandler(sites Sites) http.HandlerFunc {
 
 func ArchiveHandler(database Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodOptions {
+		switch req.Method {
+		case http.MethodOptions:
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.WriteHeader(http.StatusOK)
-		} else if req.Method == http.MethodGet {
+		case http.MethodGet:
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
 

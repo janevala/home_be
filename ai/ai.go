@@ -27,13 +27,14 @@ type AnswerItem struct {
 
 func Explain() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodOptions {
+		switch req.Method {
+		case http.MethodOptions:
 			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.WriteHeader(http.StatusOK)
-		} else if req.Method == http.MethodPost {
+		case http.MethodPost:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				log.Println("Invalid URI")
 				w.WriteHeader(http.StatusBadRequest)
