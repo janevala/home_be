@@ -1,7 +1,6 @@
 package ai
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
@@ -9,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 
+	Log "github.com/janevala/home_be/llog"
 	_ "github.com/lib/pq"
 	"github.com/rifaideen/talkative"
 )
@@ -36,7 +36,8 @@ func Explain() http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 		case http.MethodPost:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
-				log.Println("Invalid URI")
+				Log.Out("Invalid request: missing or incorrect code parameter")
+
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte("Invalid URI"))
 				return
@@ -48,7 +49,7 @@ func Explain() http.HandlerFunc {
 			if req.Body != nil {
 				bodyBytes, err = io.ReadAll(req.Body)
 				if err != nil {
-					log.Printf("Body reading error")
+					Log.Err(err)
 					return
 				}
 				defer req.Body.Close()
@@ -59,16 +60,16 @@ func Explain() http.HandlerFunc {
 
 			if len(bodyBytes) > 0 {
 				if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
-					log.Println("JSON parse error")
+					Log.Err(err)
 					return
 				}
 				err := json.Unmarshal(bodyBytes, &questionItem)
 				if err != nil {
-					log.Println("JSON Unmarshal error")
+					Log.Err(err)
 					return
 				}
 			} else {
-				log.Printf("Body: No Body Supplied\n")
+				Log.Out("Body: No Body Supplied\n")
 			}
 
 			answerItem := queryAI(questionItem)
@@ -96,7 +97,7 @@ func queryAI(q QuestionItem) AnswerItem {
 	responseAnswer := talkative.ChatResponse{}
 	callback := func(cr *talkative.ChatResponse, err error) {
 		if err != nil {
-			log.Println("Error in callback")
+			Log.Err(err)
 			return
 		}
 

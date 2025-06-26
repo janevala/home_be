@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"io"
 	"sort"
 
+	Log "github.com/janevala/home_be/llog"
 	_ "github.com/lib/pq"
 )
 
@@ -66,7 +66,7 @@ func AuthHandler(w http.ResponseWriter, req *http.Request) {
 		if req.Body != nil {
 			bodyBytes, err = io.ReadAll(req.Body)
 			if err != nil {
-				log.Printf("Body reading error")
+				Log.Err(err)
 				return
 			}
 			defer req.Body.Close()
@@ -77,26 +77,26 @@ func AuthHandler(w http.ResponseWriter, req *http.Request) {
 
 		if len(bodyBytes) > 0 {
 			if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
-				log.Println("JSON parse error")
+				Log.Err(err)
 				return
 			}
 			err := json.Unmarshal(bodyBytes, &loginObject)
 			if err != nil {
-				log.Println("JSON Unmarshal error")
+				Log.Err(err)
 				return
 			}
 		} else {
-			log.Printf("Body: No Body Supplied\n")
+			Log.Out("Body: No Body Supplied\n")
 		}
 
 		if (loginObject.Username == "123") && (loginObject.Password == "123") {
-			log.Printf("Logged in as %s\n", loginObject.Username)
+			Log.Out("Logged in as %s\n", loginObject.Username)
 
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(loginObject.Username))
 		} else {
-			log.Printf("Invalid credentials for %s\n", loginObject.Username)
+			Log.Out("Invalid credentials for %s\n", loginObject.Username)
 
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Invalid Credentials"))
@@ -115,7 +115,7 @@ func RssHandler(sites Sites) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
-				log.Println("Invalid URI")
+				Log.Out("Invalid URI")
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte("Invalid URI"))
 				return
@@ -143,16 +143,20 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 			db, err := sql.Open("postgres", connStr)
 
 			if err != nil {
-				log.Fatal(err)
+				Log.Err(err)
 			}
 
 			if err = db.Ping(); err != nil {
-				log.Fatal(err)
+				Log.Err(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
 			}
 
-			rows, err2 := db.Query("SELECT title, description, link, published, published_parsed, source, thumbnail, guid FROM feed_items")
-			if err2 != nil {
-				log.Fatal(err2)
+			rows, err := db.Query("SELECT title, description, link, published, published_parsed, source, thumbnail, guid FROM feed_items")
+			if err != nil {
+				Log.Err(err)
+				http.Error(w, "Database query error", http.StatusInternalServerError)
+				return
 			}
 
 			defer rows.Close()
@@ -168,9 +172,11 @@ func ArchiveHandler(database Database) http.HandlerFunc {
 
 			items := []ExtendedItem{}
 			for rows.Next() {
-				err3 := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &guid)
-				if err3 != nil {
-					log.Fatal(err3)
+				err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &guid)
+				if err != nil {
+					Log.Err(err)
+					http.Error(w, "Database scan error", http.StatusInternalServerError)
+					return
 				}
 
 				items = append(items, ExtendedItem{Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, Updated: source, LinkImage: linkImage, GUID: guid})

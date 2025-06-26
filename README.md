@@ -16,6 +16,8 @@ Separate Home BE Crawler is running as a different microservice, and crawls RSS 
 
 AI integration to Ollama local AI instance is integrated through Talkative plugin for Golang.
 
+Go build tags used: debug, release
+
 # Go notes
 ```
 sudo apt install -y golang
@@ -38,6 +40,3 @@ sudo docker run --name api-host --network home-network -p 8091:8091 -d news-back
 
 sudo docker network connect home-network api-host
 ```
-
-# TODO's
-- [ ] Unify logging

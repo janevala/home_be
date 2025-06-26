@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 
 	Ai "github.com/janevala/home_be/ai"
 	Api "github.com/janevala/home_be/api"
+	Log "github.com/janevala/home_be/llog"
 )
 
 type LoggerHandler struct {
@@ -40,15 +42,16 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	log.Println("Number of CPUs: ", runtime.NumCPU())
-	log.Println("Number of Goroutines: ", runtime.NumGoroutine())
-	log.Println("Server listening on: " + serverPort)
-	log.Fatal(server.ListenAndServe())
+	Log.Out("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
+	Log.Out("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
+	Log.Out("Server listening on: " + serverPort)
+	Log.Fatal(server.ListenAndServe())
 }
 
 func init() {
 	sitesFile, err := os.ReadFile("sites.json")
 	if err != nil {
+		Log.Err(err)
 		panic(err)
 	}
 
@@ -56,6 +59,7 @@ func init() {
 	json.Unmarshal(sitesFile, &sites)
 	sitesString, err := json.MarshalIndent(sites, "", "\t")
 	if err != nil {
+		Log.Err(err)
 		panic(err)
 	} else {
 		sites.Time = int(time.Now().UTC().UnixMilli())
@@ -63,11 +67,12 @@ func init() {
 			sites.Sites[i].Uuid = uuid.NewString()
 		}
 
-		log.Println(string(sitesString))
+		Log.Out(string(sitesString))
 	}
 
 	databaseFile, err := os.ReadFile("database.json")
 	if err != nil {
+		Log.Err(err)
 		panic(err)
 	}
 
@@ -75,9 +80,10 @@ func init() {
 	json.Unmarshal(databaseFile, &database)
 	databaseString, err := json.MarshalIndent(database, "", "\t")
 	if err != nil {
+		Log.Err(err)
 		panic(err)
 	} else {
-		log.Println(string(databaseString))
+		Log.Out(string(databaseString))
 	}
 
 	muxRouter := mux.NewRouter()
@@ -95,6 +101,7 @@ func init() {
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
+			Log.Err(err)
 			http.Error(w, "Could not load template", http.StatusInternalServerError)
 			return
 		}
@@ -108,10 +115,11 @@ func init() {
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
+			Log.Err(err)
 			http.Error(w, "Could not execute template", http.StatusInternalServerError)
 			return
 		}
-		log.Printf("Request served: %s %s", r.Method, r.URL.Path)
+		Log.Out("Request served: %s %s", r.Method, r.URL.Path)
 	})
 
 	http.Handle("/graphql", httpRouter)
@@ -140,7 +148,7 @@ func graphQlHandler(q string) http.HandlerFunc {
 		})
 
 		if err := json.NewEncoder(w).Encode(result); err != nil {
-			log.Printf("could not write result to response: %s", err)
+			Log.Err(err)
 		}
 
 		//// INCOMPLETE DABBLING
@@ -158,7 +166,7 @@ func graphQlHandler(q string) http.HandlerFunc {
 		schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
 		schema, err := graphql.NewSchema(schemaConfig)
 		if err != nil {
-			log.Fatalf("failed to create new schema, error: %v", err)
+			Log.Err(err)
 		}
 
 		query := `
@@ -169,7 +177,7 @@ func graphQlHandler(q string) http.HandlerFunc {
 		params := graphql.Params{Schema: schema, RequestString: query}
 		res := graphql.Do(params)
 		if len(res.Errors) > 0 {
-			log.Fatalf("failed to execute graphql operation, errors: %+v", res.Errors)
+			Log.Out("failed to execute graphql operation, errors: %+v", res.Errors)
 		}
 		json, _ := json.Marshal(res)
 

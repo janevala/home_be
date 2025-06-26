@@ -29,14 +29,22 @@ build:
 	go get github.com/lib/pq
 	go get github.com/rifaideen/talkative
 	go get github.com/graphql-go/graphql
-	GOARCH=${BUILDARCH} go build -o ${BINARY_NAME}_${BUILDARCH} main.go
+
+debug: build
+	GOARCH=${BUILDARCH} go build -tags debug -o ${BINARY_NAME}_${BUILDARCH} main.go
+
+release: build
+	GOARCH=${BUILDARCH} go build -tags release -o ${BINARY_NAME}_${BUILDARCH} main.go
 
 run:
 	./${BINARY_NAME}_${BUILDARCH}
 
 clean:
 	go clean
+	go clean -cache
 	rm -rf vendor
 	rm -rf go.sum
 	rm -rf go.mod
 	rm -f ${BINARY_NAME}_${BUILDARCH}
+
+rebuild: clean debug
