@@ -104,7 +104,7 @@ func AuthHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func RssHandler(sites Sites) http.HandlerFunc {
+func SitesHandler(sites Sites) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:

@@ -38,4 +38,4 @@ clean:
 	rm -rf go.mod
 	rm -f ${BINARY_NAME}_${BUILDARCH}
 
-rebuild: clean debug
+rebuild: clean build

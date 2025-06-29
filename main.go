@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/examples/todo/schema"
 
@@ -86,17 +85,15 @@ func init() {
 		Log.Out(string(databaseString))
 	}
 
-	muxRouter := mux.NewRouter()
-	muxRouter.HandleFunc("/auth", Api.AuthHandler).Methods(http.MethodPost, http.MethodOptions)
-	muxRouter.HandleFunc("/sites", Api.RssHandler(sites)).Methods(http.MethodGet, http.MethodOptions)
-	muxRouter.HandleFunc("/archive", Api.ArchiveHandler(database)).Methods(http.MethodGet, http.MethodOptions)
-	muxRouter.HandleFunc("/explain", Ai.Explain()).Methods(http.MethodPost, http.MethodOptions)
-	http.Handle("/auth", muxRouter)
-	http.Handle("/sites", muxRouter)
-	http.Handle("/archive", muxRouter)
-	http.Handle("/explain", muxRouter)
-
 	httpRouter := http.NewServeMux()
+	httpRouter.HandleFunc("POST /auth", Api.AuthHandler)
+	httpRouter.HandleFunc("OPTIONS /auth", Api.AuthHandler)
+	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(sites))
+	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(sites))
+	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(database))
+	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(database))
+	httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler())
+	httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler())
 	httpRouter.HandleFunc("POST /graphql", graphQlHandler("Hello, GraphQL!"))
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
@@ -122,6 +119,10 @@ func init() {
 		Log.Out("Request served: %s %s", r.Method, r.URL.Path)
 	})
 
+	http.Handle("/auth", httpRouter)
+	http.Handle("/sites", httpRouter)
+	http.Handle("/archive", httpRouter)
+	http.Handle("/explain", httpRouter)
 	http.Handle("/graphql", httpRouter)
 	http.Handle("/", httpRouter)
 }

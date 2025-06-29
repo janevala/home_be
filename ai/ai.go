@@ -25,7 +25,7 @@ type AnswerItem struct {
 	Answer string `json:"answer,omitempty"`
 }
 
-func Explain() http.HandlerFunc {
+func ExplainHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
