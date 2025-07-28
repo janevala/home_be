@@ -10,13 +10,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/examples/todo/schema"
 
 	Ai "github.com/janevala/home_be/ai"
 	Api "github.com/janevala/home_be/api"
-	Log "github.com/janevala/home_be/llog"
+	"github.com/janevala/home_be/config"
+	"github.com/janevala/home_be/llog"
 )
 
 type LoggerHandler struct {
@@ -41,37 +41,42 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	Log.Out("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
-	Log.Out("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
-	Log.Out("Server listening on: " + serverPort)
-	Log.Fatal(server.ListenAndServe())
+	llog.Out("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
+	llog.Out("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
+	llog.Out("Server listening on: " + serverPort)
+	llog.Fatal(server.ListenAndServe())
 }
 
 func init() {
-	sitesFile, err := os.ReadFile("sites.json")
+	// sitesFile, err := os.ReadFile("sites.json")
+	// if err != nil {
+	// 	llog.Err(err)
+	// 	panic(err)
+	// }
+	// sites := Api.Sites{}
+	// json.Unmarshal(sitesFile, &sites)
+	// sitesString, err := json.MarshalIndent(sites, "", "\t")
+	// if err != nil {
+	// 	llog.Err(err)
+	// 	panic(err)
+	// } else {
+	// 	sites.Time = int(time.Now().UTC().UnixMilli())
+	// 	for i := 0; i < len(sites.Sites); i++ {
+	// 		sites.Sites[i].Uuid = uuid.NewString()
+	// 	}
+	// 	llog.Out(string(sitesString))
+	// }
+
+	cfg, err := config.LoadConfig("config.json")
 	if err != nil {
-		Log.Err(err)
+		llog.Err(err)
 		panic(err)
 	}
-
-	sites := Api.Sites{}
-	json.Unmarshal(sitesFile, &sites)
-	sitesString, err := json.MarshalIndent(sites, "", "\t")
-	if err != nil {
-		Log.Err(err)
-		panic(err)
-	} else {
-		sites.Time = int(time.Now().UTC().UnixMilli())
-		for i := 0; i < len(sites.Sites); i++ {
-			sites.Sites[i].Uuid = uuid.NewString()
-		}
-
-		Log.Out(string(sitesString))
-	}
+	llog.Out("Server port: " + cfg.Server.Port)
 
 	databaseFile, err := os.ReadFile("database.json")
 	if err != nil {
-		Log.Err(err)
+		llog.Err(err)
 		panic(err)
 	}
 
@@ -79,17 +84,17 @@ func init() {
 	json.Unmarshal(databaseFile, &database)
 	databaseString, err := json.MarshalIndent(database, "", "\t")
 	if err != nil {
-		Log.Err(err)
+		llog.Err(err)
 		panic(err)
 	} else {
-		Log.Out(string(databaseString))
+		llog.Out(string(databaseString))
 	}
 
 	httpRouter := http.NewServeMux()
 	httpRouter.HandleFunc("POST /auth", Api.AuthHandler)
 	httpRouter.HandleFunc("OPTIONS /auth", Api.AuthHandler)
-	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(sites))
-	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(sites))
+	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
+	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(database))
 	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(database))
 	httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler())
@@ -98,7 +103,7 @@ func init() {
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
-			Log.Err(err)
+			llog.Err(err)
 			http.Error(w, "Could not load template", http.StatusInternalServerError)
 			return
 		}
@@ -108,15 +113,15 @@ func init() {
 			"NumCPU":       runtime.NumCPU(),
 			"NumGoroutine": runtime.NumGoroutine(),
 			"Database":     database,
-			"Sites":        sites,
+			"Sites":        cfg.Sites,
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
-			Log.Err(err)
+			llog.Err(err)
 			http.Error(w, "Could not execute template", http.StatusInternalServerError)
 			return
 		}
-		Log.Out("Request served: %s %s", r.Method, r.URL.Path)
+		llog.Out("Request served: %s %s", r.Method, r.URL.Path)
 	})
 
 	http.Handle("/auth", httpRouter)
@@ -149,7 +154,7 @@ func graphQlHandler(q string) http.HandlerFunc {
 		})
 
 		if err := json.NewEncoder(w).Encode(result); err != nil {
-			Log.Err(err)
+			llog.Err(err)
 		}
 
 		//// INCOMPLETE DABBLING
@@ -167,7 +172,7 @@ func graphQlHandler(q string) http.HandlerFunc {
 		schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
 		schema, err := graphql.NewSchema(schemaConfig)
 		if err != nil {
-			Log.Err(err)
+			llog.Err(err)
 		}
 
 		query := `
@@ -178,7 +183,7 @@ func graphQlHandler(q string) http.HandlerFunc {
 		params := graphql.Params{Schema: schema, RequestString: query}
 		res := graphql.Do(params)
 		if len(res.Errors) > 0 {
-			Log.Out("failed to execute graphql operation, errors: %+v", res.Errors)
+			llog.Out("failed to execute graphql operation, errors: %+v", res.Errors)
 		}
 		json, _ := json.Marshal(res)
 
