@@ -2,8 +2,9 @@
 package config
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
+	Server ServerConfig
+	// Database DatabaseConfig
+	Database Database
 	Sites    SitesConfig
 }
 
@@ -14,14 +15,18 @@ type ServerConfig struct {
 	Environment  string // "development", "production"
 }
 
-type DatabaseConfig struct {
-	Host     string
-	Port     string
-	Name     string
-	User     string
-	Password string
-	SSLMode  string
+type Database struct {
+	Postgres string `json:"postgres"`
 }
+
+// type DatabaseConfig struct {
+// 	Host     string
+// 	Port     string
+// 	Name     string
+// 	User     string
+// 	Password string
+// 	SSLMode  string
+// }
 
 type SitesConfig struct {
 	Time  int

@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -29,13 +28,17 @@ func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
+var cfg *config.Config
+
 func main() {
 	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
 
-	serverPort := ":8091"
+	if cfg == nil {
+		panic("Config is nil")
+	}
 
 	server := http.Server{
-		Addr:         serverPort,
+		Addr:         cfg.Server.Port,
 		Handler:      &LoggerHandler{handler: http.DefaultServeMux, logger: logger},
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -43,60 +46,27 @@ func main() {
 
 	llog.Out("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
 	llog.Out("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
-	llog.Out("Server listening on: " + serverPort)
+	llog.Out("Server listening on: " + cfg.Server.Port)
 	llog.Fatal(server.ListenAndServe())
 }
 
 func init() {
-	// sitesFile, err := os.ReadFile("sites.json")
-	// if err != nil {
-	// 	llog.Err(err)
-	// 	panic(err)
-	// }
-	// sites := Api.Sites{}
-	// json.Unmarshal(sitesFile, &sites)
-	// sitesString, err := json.MarshalIndent(sites, "", "\t")
-	// if err != nil {
-	// 	llog.Err(err)
-	// 	panic(err)
-	// } else {
-	// 	sites.Time = int(time.Now().UTC().UnixMilli())
-	// 	for i := 0; i < len(sites.Sites); i++ {
-	// 		sites.Sites[i].Uuid = uuid.NewString()
-	// 	}
-	// 	llog.Out(string(sitesString))
-	// }
-
-	cfg, err := config.LoadConfig("config.json")
+	var err error
+	cfg, err = config.LoadConfig("config.json")
 	if err != nil {
 		llog.Err(err)
 		panic(err)
 	}
+
 	llog.Out("Server port: " + cfg.Server.Port)
-
-	databaseFile, err := os.ReadFile("database.json")
-	if err != nil {
-		llog.Err(err)
-		panic(err)
-	}
-
-	database := Api.Database{}
-	json.Unmarshal(databaseFile, &database)
-	databaseString, err := json.MarshalIndent(database, "", "\t")
-	if err != nil {
-		llog.Err(err)
-		panic(err)
-	} else {
-		llog.Out(string(databaseString))
-	}
 
 	httpRouter := http.NewServeMux()
 	httpRouter.HandleFunc("POST /auth", Api.AuthHandler)
 	httpRouter.HandleFunc("OPTIONS /auth", Api.AuthHandler)
 	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
-	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(database))
-	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(database))
+	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(cfg.Database))
+	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(cfg.Database))
 	httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler())
 	httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler())
 	httpRouter.HandleFunc("POST /graphql", graphQlHandler("Hello, GraphQL!"))
@@ -112,7 +82,7 @@ func init() {
 			"GoVersion":    runtime.Version(),
 			"NumCPU":       runtime.NumCPU(),
 			"NumGoroutine": runtime.NumGoroutine(),
-			"Database":     database,
+			"Database":     cfg.Database.Postgres,
 			"Sites":        cfg.Sites,
 		}
 

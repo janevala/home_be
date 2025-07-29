@@ -16,22 +16,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Database struct {
-	Postgres string `json:"postgres"`
-}
-
-// type Sites struct {
-// 	Time  int    `json:"time"`
-// 	Title string `json:"title"`
-// 	Sites []Site `json:"sites"`
-// }
-
-// type Site struct {
-// 	Uuid  string `json:"uuid"`
-// 	Title string `json:"title"`
-// 	Url   string `json:"url"`
-// }
-
 type LoginObject struct {
 	Username     string `json:"username"`
 	Password     string `json:"password"`
@@ -130,7 +114,7 @@ func SitesHandler(sites config.SitesConfig) http.HandlerFunc {
 	}
 }
 
-func ArchiveHandler(database Database) http.HandlerFunc {
+func ArchiveHandler(database config.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
