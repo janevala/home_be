@@ -2,10 +2,10 @@
 package config
 
 type Config struct {
-	Server ServerConfig
-	// Database DatabaseConfig
-	Database Database
-	Sites    SitesConfig
+	Server    ServerConfig
+	Database  Database
+	McpServer McpServer
+	Sites     SitesConfig
 }
 
 type ServerConfig struct {
@@ -19,14 +19,10 @@ type Database struct {
 	Postgres string `json:"postgres"`
 }
 
-// type DatabaseConfig struct {
-// 	Host     string
-// 	Port     string
-// 	Name     string
-// 	User     string
-// 	Password string
-// 	SSLMode  string
-// }
+type McpServer struct {
+	Host string
+	Port string
+}
 
 type SitesConfig struct {
 	Time  int

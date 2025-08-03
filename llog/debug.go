@@ -1,5 +1,6 @@
 //go:build debug
 
+// llog/debug.go
 package llog
 
 import "log"

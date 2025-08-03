@@ -1,5 +1,6 @@
 //go:build release
 
+// llog/release.go
 package llog
 
 import "log"

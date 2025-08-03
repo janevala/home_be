@@ -8,6 +8,10 @@
 	"database": {
 		"postgres": "postgres://postgres:1234@127.0.0.1:5432/homebedb?sslmode=disable"
 	},
+	"mcpServer": {
+		"host": "localhost",
+		"port": "1234"
+	},
 	"sites": {
 		"time": 1711273868253,
 		"title": "RSS Feeds",

@@ -1,21 +1,23 @@
+// ai/ai.go
 package ai
 
 import (
 	"net/http"
 	"strings"
 
-	"bytes"
 	"encoding/json"
-	"io"
 
+	"context"
+	"log"
+	"os/exec"
+
+	"github.com/graphql-go/graphql"
+	"github.com/janevala/home_be/config"
 	"github.com/janevala/home_be/llog"
 	_ "github.com/lib/pq"
-	"github.com/rifaideen/talkative"
-)
 
-type Database struct {
-	Postgres string `json:"postgres"`
-}
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
 
 type QuestionItem struct {
 	Question string `json:"question,omitempty"`
@@ -25,7 +27,13 @@ type AnswerItem struct {
 	Answer string `json:"answer,omitempty"`
 }
 
-func ExplainHandler() http.HandlerFunc {
+type QueryPost struct {
+	Query     string                 `json:"query"`
+	Operation string                 `json:"operationName"`
+	Variables map[string]interface{} `json:"variables"`
+}
+
+func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
@@ -43,38 +51,41 @@ func ExplainHandler() http.HandlerFunc {
 				return
 			}
 
-			var bodyBytes []byte
-			var err error
-
-			if req.Body != nil {
-				bodyBytes, err = io.ReadAll(req.Body)
-				if err != nil {
-					llog.Err(err)
-					return
-				}
-				defer req.Body.Close()
+			var q QueryPost
+			if err := json.NewDecoder(req.Body).Decode(&q); err != nil {
+				w.WriteHeader(400)
+				return
 			}
 
-			var questionItem QuestionItem
-			var jsonString bytes.Buffer
+			fields := graphql.Fields{
+				"query": &graphql.Field{
+					Type: graphql.String,
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						questionItem := QuestionItem{
+							Question: p.Args["question"].(string),
+						}
 
-			if len(bodyBytes) > 0 {
-				if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
-					llog.Err(err)
-					return
-				}
-				err := json.Unmarshal(bodyBytes, &questionItem)
-				if err != nil {
-					llog.Err(err)
-					return
-				}
-			} else {
-				llog.Out("Body: No Body Supplied\n")
+						answerItem := queryAI(questionItem, mcpServer)
+
+						return answerItem.Answer, nil
+					},
+				},
 			}
 
-			answerItem := queryAI(questionItem)
+			rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
+			schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
+			schema, err := graphql.NewSchema(schemaConfig)
+			if err != nil {
+				llog.Err("failed to create new schema, error: %v", err)
+			}
 
-			responseJson, _ := json.Marshal(answerItem)
+			params := graphql.Params{Schema: schema, RequestString: q.Query}
+			r := graphql.Do(params)
+			if len(r.Errors) > 0 {
+				llog.Err("failed to execute graphql operation, errors: %+v", r.Errors)
+			}
+
+			responseJson, _ := json.Marshal(r)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Write(responseJson)
 			w.WriteHeader(http.StatusOK)
@@ -82,45 +93,29 @@ func ExplainHandler() http.HandlerFunc {
 	}
 }
 
-func queryAI(q QuestionItem) AnswerItem {
+func queryAI(q QuestionItem, mcpServer config.McpServer) AnswerItem {
 	var question string = q.Question
 
-	client, err := talkative.New("http://127.0.0.1:11434")
+	ctx := context.Background()
 
+	client := mcp.NewClient(&mcp.Implementation{Name: "mcp-client", Version: "v1.0.0"}, nil)
+
+	transport := mcp.NewCommandTransport(exec.Command(mcpServer.Host, mcpServer.Port))
+	session, err := client.Connect(ctx, transport)
 	if err != nil {
-		panic("Failed to create talkative client")
+		log.Fatal(err)
+	}
+	defer session.Close()
+
+	params := &mcp.CallToolResultFor[string]{
+		Content: []mcp.Content{
+			&mcp.TextContent{
+				Text: question,
+			},
+		},
 	}
 
-	model := "mistral:7b"
-	//model := "qwen2.5-coder:14b"
-
-	responseAnswer := talkative.ChatResponse{}
-	callback := func(cr *talkative.ChatResponse, err error) {
-		if err != nil {
-			llog.Err(err)
-			return
-		}
-
-		responseAnswer = *cr
-	}
-
-	message := talkative.ChatMessage{
-		Role:    talkative.USER,
-		Content: question,
-	}
-
-	b := false
-	done, err := client.Chat(model, callback, &talkative.ChatParams{
-		Stream: &b,
-	}, message)
-
-	if err != nil {
-		panic(err)
-	}
-
-	<-done
-
-	answerItem := AnswerItem{Answer: responseAnswer.Message.Content}
+	answerItem := AnswerItem{Answer: params.Content[0].(*mcp.TextContent).Text}
 
 	return answerItem
 }
