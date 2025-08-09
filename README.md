@@ -26,7 +26,8 @@ go mod tidy
 go get github.com/mmcdole/gofeed
 go get github.com/google/uuid
 go get github.com/lib/pq
-go get github.com/modelcontextprotocol/go-sdk/mcp
+# go get github.com/modelcontextprotocol/go-sdk/mcp
+go get github.com/rifaideen/talkative
 go get github.com/graphql-go/graphql
 ```
 

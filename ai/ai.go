@@ -7,16 +7,11 @@ import (
 
 	"encoding/json"
 
-	"context"
-	"log"
-	"os/exec"
-
 	"github.com/graphql-go/graphql"
 	"github.com/janevala/home_be/config"
 	"github.com/janevala/home_be/llog"
 	_ "github.com/lib/pq"
-
-	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/rifaideen/talkative"
 )
 
 type QuestionItem struct {
@@ -65,7 +60,8 @@ func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
 							Question: p.Args["question"].(string),
 						}
 
-						answerItem := queryAI(questionItem, mcpServer)
+						answerItem := queryAI(questionItem)
+						// answerItem := queryAI(questionItem, mcpServer)
 
 						return answerItem.Answer, nil
 					},
@@ -76,14 +72,14 @@ func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
 			schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
 			schema, err := graphql.NewSchema(schemaConfig)
 			if err != nil {
-				llog.Err("failed to create new schema, error: %v", err)
+				llog.Err(err)
 			}
 
 			params := graphql.Params{Schema: schema, RequestString: q.Query}
 			r := graphql.Do(params)
-			if len(r.Errors) > 0 {
-				llog.Err("failed to execute graphql operation, errors: %+v", r.Errors)
-			}
+			// if len(r.Errors) > 0 {
+			// 	llog.Err(r.Errors[0].Error())
+			// }
 
 			responseJson, _ := json.Marshal(r)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -93,29 +89,74 @@ func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
 	}
 }
 
-func queryAI(q QuestionItem, mcpServer config.McpServer) AnswerItem {
+// / MCP
+// func queryAI(q QuestionItem, mcpServer config.McpServer) AnswerItem {
+// 	var question string = q.Question
+
+// 	ctx := context.Background()
+
+// 	client := mcp.NewClient(&mcp.Implementation{Name: "mcp-client", Version: "v1.0.0"}, nil)
+
+// 	transport := mcp.NewCommandTransport(exec.Command(mcpServer.Host, mcpServer.Port))
+// 	session, err := client.Connect(ctx, transport)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer session.Close()
+
+// 	params := &mcp.CallToolResultFor[string]{
+// 		Content: []mcp.Content{
+// 			&mcp.TextContent{
+// 				Text: question,
+// 			},
+// 		},
+// 	}
+
+// 	answerItem := AnswerItem{Answer: params.Content[0].(*mcp.TextContent).Text}
+
+// 	return answerItem
+// }
+
+// / OLLAMA
+func queryAI(q QuestionItem) AnswerItem {
 	var question string = q.Question
 
-	ctx := context.Background()
+	client, err := talkative.New("http://127.0.0.1:11434")
 
-	client := mcp.NewClient(&mcp.Implementation{Name: "mcp-client", Version: "v1.0.0"}, nil)
-
-	transport := mcp.NewCommandTransport(exec.Command(mcpServer.Host, mcpServer.Port))
-	session, err := client.Connect(ctx, transport)
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer session.Close()
-
-	params := &mcp.CallToolResultFor[string]{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: question,
-			},
-		},
+		panic("Failed to create talkative client")
 	}
 
-	answerItem := AnswerItem{Answer: params.Content[0].(*mcp.TextContent).Text}
+	model := "mistral:7b"
+	//model := "qwen2.5-coder:14b"
+
+	responseAnswer := talkative.ChatResponse{}
+	callback := func(cr *talkative.ChatResponse, err error) {
+		if err != nil {
+			llog.Err(err)
+			return
+		}
+
+		responseAnswer = *cr
+	}
+
+	message := talkative.ChatMessage{
+		Role:    talkative.USER,
+		Content: question,
+	}
+
+	b := false
+	done, err := client.Chat(model, callback, &talkative.ChatParams{
+		Stream: &b,
+	}, message)
+
+	if err != nil {
+		panic(err)
+	}
+
+	<-done
+
+	answerItem := AnswerItem{Answer: responseAnswer.Message.Content}
 
 	return answerItem
 }
