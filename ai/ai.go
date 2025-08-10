@@ -28,15 +28,17 @@ type QueryPost struct {
 	Variables map[string]interface{} `json:"variables"`
 }
 
-func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
+func ExplainHandler(ollama config.Ollama) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
+
 		case http.MethodOptions:
 			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.WriteHeader(http.StatusOK)
+
 		case http.MethodPost:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				llog.Out("Invalid request: missing or incorrect code parameter")
@@ -60,8 +62,7 @@ func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
 							Question: p.Args["question"].(string),
 						}
 
-						answerItem := queryAI(questionItem)
-						// answerItem := queryAI(questionItem, mcpServer)
+						answerItem := queryAI(questionItem, ollama)
 
 						return answerItem.Answer, nil
 					},
@@ -77,9 +78,6 @@ func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
 
 			params := graphql.Params{Schema: schema, RequestString: q.Query}
 			r := graphql.Do(params)
-			// if len(r.Errors) > 0 {
-			// 	llog.Err(r.Errors[0].Error())
-			// }
 
 			responseJson, _ := json.Marshal(r)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -89,46 +87,12 @@ func ExplainHandler(mcpServer config.McpServer) http.HandlerFunc {
 	}
 }
 
-// / MCP
-// func queryAI(q QuestionItem, mcpServer config.McpServer) AnswerItem {
-// 	var question string = q.Question
-
-// 	ctx := context.Background()
-
-// 	client := mcp.NewClient(&mcp.Implementation{Name: "mcp-client", Version: "v1.0.0"}, nil)
-
-// 	transport := mcp.NewCommandTransport(exec.Command(mcpServer.Host, mcpServer.Port))
-// 	session, err := client.Connect(ctx, transport)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer session.Close()
-
-// 	params := &mcp.CallToolResultFor[string]{
-// 		Content: []mcp.Content{
-// 			&mcp.TextContent{
-// 				Text: question,
-// 			},
-// 		},
-// 	}
-
-// 	answerItem := AnswerItem{Answer: params.Content[0].(*mcp.TextContent).Text}
-
-// 	return answerItem
-// }
-
-// / OLLAMA
-func queryAI(q QuestionItem) AnswerItem {
-	var question string = q.Question
-
-	client, err := talkative.New("http://127.0.0.1:11434")
+func queryAI(q QuestionItem, ollama config.Ollama) AnswerItem {
+	client, err := talkative.New("http://" + ollama.Host + ":" + ollama.Port)
 
 	if err != nil {
 		panic("Failed to create talkative client")
 	}
-
-	model := "mistral:7b"
-	//model := "qwen2.5-coder:14b"
 
 	responseAnswer := talkative.ChatResponse{}
 	callback := func(cr *talkative.ChatResponse, err error) {
@@ -142,16 +106,16 @@ func queryAI(q QuestionItem) AnswerItem {
 
 	message := talkative.ChatMessage{
 		Role:    talkative.USER,
-		Content: question,
+		Content: q.Question,
 	}
 
 	b := false
-	done, err := client.Chat(model, callback, &talkative.ChatParams{
+	done, err := client.Chat(ollama.Model, callback, &talkative.ChatParams{
 		Stream: &b,
 	}, message)
 
 	if err != nil {
-		panic(err)
+		llog.Err(err)
 	}
 
 	<-done

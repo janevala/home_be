@@ -8,9 +8,10 @@
 	"database": {
 		"postgres": "postgres://postgres:1234@127.0.0.1:5432/homebedb?sslmode=disable"
 	},
-	"mcpServer": {
+	"ollama": {
 		"host": "localhost",
-		"port": "1234"
+		"port": "11434",
+		"model": "mistral:7b"
 	},
 	"sites": {
 		"time": 1711273868253,

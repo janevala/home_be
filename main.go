@@ -91,8 +91,8 @@ func init() {
 	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(cfg.Database))
 	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(cfg.Database))
-	httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.McpServer))
-	httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.McpServer))
+	httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.Ollama))
+	httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.Ollama))
 
 	http.Handle("/auth", httpRouter)
 	http.Handle("/sites", httpRouter)

@@ -2,10 +2,10 @@
 package config
 
 type Config struct {
-	Server    ServerConfig
-	Database  Database
-	McpServer McpServer
-	Sites     SitesConfig
+	Server   ServerConfig
+	Database Database
+	Ollama   Ollama
+	Sites    SitesConfig
 }
 
 type ServerConfig struct {
@@ -19,9 +19,10 @@ type Database struct {
 	Postgres string `json:"postgres"`
 }
 
-type McpServer struct {
-	Host string
-	Port string
+type Ollama struct {
+	Host  string
+	Port  string
+	Model string // "mistral:7b", "qwen2.5-coder:14b"
 }
 
 type SitesConfig struct {
