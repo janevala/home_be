@@ -43,6 +43,13 @@ func main() {
 	llog.Out("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
 	llog.Out("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
 	llog.Out("Server listening on: " + cfg.Server.Port)
+
+	llog.Out("Starting crawler with configuration:")
+	llog.Out("Sites: " + llog.Out(cfg.Sites))
+	llog.Out("Database: " + llog.Out(cfg.Database))
+	llog.Out("Ollama: " + llog.Out(cfg.Ollama))
+	llog.Out("Server: " + llog.Out(cfg.Server))
+
 	llog.Fatal(server.ListenAndServe())
 }
 

@@ -25,16 +25,16 @@ type LoginObject struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-type ExtendedItem struct {
+type NewsItem struct {
+	Source          string     `json:"source,omitempty"`
 	Title           string     `json:"title,omitempty"`
 	Description     string     `json:"description,omitempty"`
 	Content         string     `json:"content,omitempty"`
 	Link            string     `json:"link,omitempty"`
-	Updated         string     `json:"updated,omitempty"`
 	Published       string     `json:"published,omitempty"`
 	PublishedParsed *time.Time `json:"publishedParsed,omitempty"`
 	LinkImage       string     `json:"linkImage,omitempty"`
-	GUID            string     `json:"guid,omitempty"`
+	Uuid            string     `json:"uuid,omitempty"`
 }
 
 // AI: THIS IS ACCEPTED FOR CURRENT REQUIREMENTS/NEEDS,
@@ -140,7 +140,7 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 				return
 			}
 
-			rows, err := db.Query("SELECT title, description, link, published, published_parsed, source, thumbnail, guid FROM feed_items")
+			rows, err := db.Query("SELECT title, description, link, published, published_parsed, source, thumbnail, uuid FROM feed_items")
 			if err != nil {
 				llog.Err(err)
 				http.Error(w, "Database query error", http.StatusInternalServerError)
@@ -149,25 +149,25 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 
 			defer rows.Close()
 
+			var source string
 			var title string
 			var description string
 			var link string
 			var published string
 			var published_parsed *time.Time
-			var source string
 			var linkImage string
-			var guid string
+			var uuid string
 
-			items := []ExtendedItem{}
+			items := []NewsItem{}
 			for rows.Next() {
-				err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &guid)
+				err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &uuid)
 				if err != nil {
 					llog.Err(err)
 					http.Error(w, "Database scan error", http.StatusInternalServerError)
 					return
 				}
 
-				items = append(items, ExtendedItem{Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, Updated: source, LinkImage: linkImage, GUID: guid})
+				items = append(items, NewsItem{Source: source, Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, LinkImage: linkImage, Uuid: uuid})
 			}
 
 			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
