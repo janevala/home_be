@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -44,11 +45,11 @@ func main() {
 	llog.Out("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
 	llog.Out("Server listening on: " + cfg.Server.Port)
 
-	llog.Out("Starting crawler with configuration:")
-	llog.Out("Sites: " + llog.Out(cfg.Sites))
-	llog.Out("Database: " + llog.Out(cfg.Database))
-	llog.Out("Ollama: " + llog.Out(cfg.Ollama))
-	llog.Out("Server: " + llog.Out(cfg.Server))
+	llog.Out("Starting with configuration:")
+	llog.Out("Server: " + fmt.Sprintf("%#v", cfg.Server))
+	llog.Out("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
+	llog.Out("Database: " + fmt.Sprintf("%#v", cfg.Database))
+	llog.Out("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
 
 	llog.Fatal(server.ListenAndServe())
 }
@@ -65,7 +66,7 @@ func init() {
 
 	httpRouter := http.NewServeMux()
 
-	/// Frontend
+	/// WEB FRONTEND
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
@@ -78,8 +79,10 @@ func init() {
 			"GoVersion":    runtime.Version(),
 			"NumCPU":       runtime.NumCPU(),
 			"NumGoroutine": runtime.NumGoroutine(),
+			"Server":       cfg.Server,
 			"Database":     cfg.Database.Postgres,
 			"Sites":        cfg.Sites,
+			"Ollama":       cfg.Ollama,
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
