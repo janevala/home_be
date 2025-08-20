@@ -79,10 +79,10 @@ func init() {
 			"GoVersion":    runtime.Version(),
 			"NumCPU":       runtime.NumCPU(),
 			"NumGoroutine": runtime.NumGoroutine(),
-			"Server":       cfg.Server,
-			"Database":     cfg.Database.Postgres,
-			"Sites":        cfg.Sites,
-			"Ollama":       cfg.Ollama,
+			"Server":       fmt.Sprintf("%#v", cfg.Server),
+			"Database":     fmt.Sprintf("%#v", cfg.Database.Postgres),
+			"Sites":        fmt.Sprintf("%#v", cfg.Sites),
+			"Ollama":       fmt.Sprintf("%#v", cfg.Ollama),
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
