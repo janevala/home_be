@@ -4,13 +4,13 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"bytes"
 	"encoding/json"
 	"io"
-	"sort"
 
 	"github.com/janevala/home_be/config"
 	"github.com/janevala/home_be/llog"
@@ -124,9 +124,26 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-
 			w.WriteHeader(http.StatusOK)
+
 		case http.MethodGet:
+			// Parse pagination parameters
+			query := req.URL.Query()
+			limit := 10 // default items per page
+			offset := 0 // default offset
+
+			if l := query.Get("limit"); l != "" {
+				if l, err := strconv.Atoi(l); err == nil && l > 0 {
+					limit = l
+				}
+			}
+
+			if o := query.Get("offset"); o != "" {
+				if o, err := strconv.Atoi(o); err == nil && o >= 0 {
+					offset = o
+				}
+			}
+
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
 
@@ -140,7 +157,23 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 				return
 			}
 
-			rows, err := db.Query("SELECT title, description, link, published, published_parsed, source, thumbnail, uuid FROM feed_items")
+			// Get total count of items
+			var totalItems int
+			err = db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&totalItems)
+			if err != nil {
+				llog.Err(err)
+				http.Error(w, "Database count error", http.StatusInternalServerError)
+				return
+			}
+
+			// Get paginated items
+			rows, err := db.Query(
+				`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
+				FROM feed_items 
+				ORDER BY published_parsed DESC 
+				LIMIT $1 OFFSET $2`,
+				limit, offset)
+
 			if err != nil {
 				llog.Err(err)
 				http.Error(w, "Database query error", http.StatusInternalServerError)
@@ -167,23 +200,36 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 					return
 				}
 
-				items = append(items, NewsItem{Source: source, Title: title, Description: description, Link: link, Published: published, PublishedParsed: published_parsed, LinkImage: linkImage, Uuid: uuid})
-			}
-
-			var isSorted bool = sort.SliceIsSorted(items, func(i, j int) bool {
-				return items[i].PublishedParsed.After(*items[j].PublishedParsed)
-			})
-
-			if !isSorted {
-				sort.Slice(items, func(i, j int) bool {
-					return items[i].PublishedParsed.After(*items[j].PublishedParsed)
+				items = append(items, NewsItem{
+					Source:          source,
+					Title:           title,
+					Description:     description,
+					Link:            link,
+					Published:       published,
+					PublishedParsed: published_parsed,
+					LinkImage:       linkImage,
+					Uuid:            uuid,
 				})
 			}
 
-			responseJson, _ := json.Marshal(items)
+			// Create response with pagination info
+			response := struct {
+				Items      []NewsItem `json:"items"`
+				TotalItems int        `json:"totalItems"`
+				Limit      int        `json:"limit"`
+				Offset     int        `json:"offset"`
+			}{
+				Items:      items,
+				TotalItems: totalItems,
+				Limit:      limit,
+				Offset:     offset,
+			}
+
+			responseJson, _ := json.Marshal(response)
+			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Write(responseJson)
 			w.WriteHeader(http.StatusOK)
+			w.Write(responseJson)
 		}
 	}
 }
