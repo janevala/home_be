@@ -6,5 +6,5 @@ WORKDIR /homebe
 COPY . .
 RUN rm -f go.mod
 RUN rm -f go.sum
-EXPOSE 8091
+EXPOSE 7071
 CMD ["./start.sh"]

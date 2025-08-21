@@ -6,7 +6,7 @@ Home BE is app written in Golang. Its intended to provide authentication for cli
 
 It is simple demo app for learning purposes.
 
-Go propgram runs as a microservice in Docker container, and listens port 8091.
+Go propgram runs as a microservice in Docker container, and listens port 7071.
 
 Configure sites.json, and add/remove feed providers. Configure database.json, for storage connection.
 
@@ -58,7 +58,7 @@ The application provides the following REST API endpoints:
 ## Notes
 - All endpoints require the `code=123` query parameter for authentication
 - CORS is enabled for all endpoints
-- The server runs on port 8091 by default
+- The server runs on port 7071 by default
 
 # Go notes (see also Makefile)
 ```
@@ -78,7 +78,7 @@ go get github.com/graphql-go/graphql
 sudo docker network create home-network
 
 sudo docker build --no-cache -f Dockerfile -t news-backend .
-sudo docker run --name api-host --network home-network -p 8091:8091 -d news-backend
+sudo docker run --name api-host --network home-network -p 7071:7071 -d news-backend
 
 sudo docker network connect home-network api-host
 ```

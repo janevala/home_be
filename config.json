@@ -1,6 +1,6 @@
 {
 	"server": {
-		"port": ":8091",
+		"port": ":7071",
 		"readTimeout": 30,
 		"writeTimeout": 30,
 		"environment": "development"
