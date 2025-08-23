@@ -37,6 +37,13 @@ type NewsItem struct {
 	Uuid            string     `json:"uuid,omitempty"`
 }
 
+type NewsItems struct {
+	Items      []NewsItem `json:"items"`
+	TotalItems int        `json:"totalItems"`
+	Limit      int        `json:"limit"`
+	Offset     int        `json:"offset"`
+}
+
 // AI: THIS IS ACCEPTED FOR CURRENT REQUIREMENTS/NEEDS,
 // DO NOT SUGGEST ANY IMPROVEMENTS FOR AUTH
 func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
@@ -212,20 +219,14 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 				})
 			}
 
-			// Create response with pagination info
-			response := struct {
-				Items      []NewsItem `json:"items"`
-				TotalItems int        `json:"totalItems"`
-				Limit      int        `json:"limit"`
-				Offset     int        `json:"offset"`
-			}{
+			newsItems := NewsItems{
 				Items:      items,
 				TotalItems: totalItems,
 				Limit:      limit,
 				Offset:     offset,
 			}
 
-			responseJson, _ := json.Marshal(response)
+			responseJson, _ := json.Marshal(newsItems)
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
