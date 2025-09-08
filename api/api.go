@@ -151,6 +151,8 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 				}
 			}
 
+			llog.Out("Limit: %d, Offset: %d\n", limit, offset)
+
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
 
