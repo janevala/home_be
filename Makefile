@@ -44,9 +44,9 @@ rebuild: clean build
 help:
 	@echo "Available targets:"
 	@echo "  dep       - Install dependencies"
-	@echo "  build     - Build the application"
-	@echo "  debug     - Build the application in debug mode"
-	@echo "  release   - Build the application in release mode"
+	@echo "  build     - Build mods"
+	@echo "  debug     - Build debug version"
+	@echo "  release   - Build release version"
 	@echo "  run       - Run the application"
 	@echo "  clean     - Clean up the build directory"
 	@echo "  rebuild   - Rebuild the application"
