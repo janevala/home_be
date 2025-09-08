@@ -40,3 +40,14 @@ clean:
 	rm -f ${BINARY_NAME}_${BUILDARCH}
 
 rebuild: clean build
+
+help:
+	@echo "Available targets:"
+	@echo "  dep       - Install dependencies"
+	@echo "  build     - Build the application"
+	@echo "  debug     - Build the application in debug mode"
+	@echo "  release   - Build the application in release mode"
+	@echo "  run       - Run the application"
+	@echo "  clean     - Clean up the build directory"
+	@echo "  rebuild   - Rebuild the application"
+	@echo "  help      - Show this help message"
