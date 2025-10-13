@@ -78,7 +78,7 @@ go get github.com/graphql-go/graphql
 sudo docker network create home-network
 
 sudo docker build --no-cache -f Dockerfile -t news-backend .
-sudo docker run --name api-host --network home-network -p 7071:7071 -d news-backend
+sudo docker run --name api-host --network home-network -p 7071:7071 --restart always -d news-backend
 
 sudo docker network connect home-network api-host
 ```
