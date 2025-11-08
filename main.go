@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	Ai "github.com/janevala/home_be/ai"
 	Api "github.com/janevala/home_be/api"
 	"github.com/janevala/home_be/config"
 	"github.com/janevala/home_be/llog"
@@ -75,14 +74,16 @@ func init() {
 			return
 		}
 		data := map[string]interface{}{
-			"BuildTime":    time.Now().Format(time.RFC3339),
-			"GoVersion":    runtime.Version(),
-			"NumCPU":       runtime.NumCPU(),
-			"NumGoroutine": runtime.NumGoroutine(),
-			"Server":       fmt.Sprintf("%#v", cfg.Server),
-			"Database":     fmt.Sprintf("%#v", cfg.Database.Postgres),
-			"Sites":        fmt.Sprintf("%#v", cfg.Sites),
-			"Ollama":       fmt.Sprintf("%#v", cfg.Ollama),
+			"BuildTime":     time.Now().Format(time.RFC3339),
+			"GoVersion":     runtime.Version(),
+			"NumCPU":        runtime.NumCPU(),
+			"NumGoroutine":  runtime.NumGoroutine(),
+			"NumGOMAXPROCS": runtime.GOMAXPROCS(0),
+			"NumCgoCall":    runtime.NumCgoCall(),
+			"Server":        fmt.Sprintf("%#v", cfg.Server),
+			"Database":      fmt.Sprintf("%#v", cfg.Database.Postgres),
+			"Sites":         fmt.Sprintf("%#v", cfg.Sites),
+			"Ollama":        fmt.Sprintf("%#v", cfg.Ollama), // TODO: sleeper for now
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
@@ -101,11 +102,11 @@ func init() {
 	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(cfg.Database))
 	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(cfg.Database))
-	httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.Ollama))
-	httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.Ollama))
+	// httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.Ollama))
+	// httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.Ollama))
 
 	http.Handle("/auth", httpRouter)
 	http.Handle("/sites", httpRouter)
 	http.Handle("/archive", httpRouter)
-	http.Handle("/explain", httpRouter)
+	// http.Handle("/explain", httpRouter)
 }
