@@ -12,7 +12,7 @@ endif
 dep:
 	go mod tidy && go mod vendor && go fmt
 
-build:
+build: clean
 	go mod init github.com/janevala/home_be
 	go mod tidy
 	go get github.com/mmcdole/gofeed
