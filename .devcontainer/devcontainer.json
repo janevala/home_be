@@ -1,11 +1,15 @@
 {
-	"name": "Go",
+	"name": "Go Dev Container",
 	"image": "mcr.microsoft.com/devcontainers/go:1.24",	
 	"features": {
 		"ghcr.io/devcontainers/features/go:1": {
 			"version": "1.24"
 		}
 	},
+	"runArgs": [
+		"--privileged",
+		"--network=host"
+	],
 	"forwardPorts": [
 		7071	
 	],
@@ -15,6 +19,6 @@
 			"onAutoForward": "notify"
 		}
 	},
-	"postCreateCommand": "make debug",
+	"postCreateCommand": "go mod download",
 	"remoteUser": "root"
 }
