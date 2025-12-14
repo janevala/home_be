@@ -49,11 +49,7 @@ type NewsItems struct {
 func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case http.MethodOptions:
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		w.WriteHeader(http.StatusOK)
+		HandleMethodOptions(w, req, "POST, OPTIONS")
 	case http.MethodPost:
 		var bodyBytes []byte
 		var err error
@@ -103,11 +99,7 @@ func SitesHandler(sites config.SitesConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-
-			w.WriteHeader(http.StatusOK)
+			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				llog.Out("Invalid URI")
@@ -128,13 +120,8 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.WriteHeader(http.StatusOK)
-
+			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
-			// Parse pagination parameters
 			query := req.URL.Query()
 			limit := 10 // default items per page
 			offset := 0 // default offset
@@ -235,4 +222,124 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 			w.Write(responseJson)
 		}
 	}
+}
+
+func SearchHandler(database config.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodOptions:
+			HandleMethodOptions(w, req, "GET, OPTIONS")
+		case http.MethodGet:
+			queryParams := req.URL.Query()
+			searchQuery := queryParams.Get("q")
+
+			connStr := database.Postgres
+			db, err := sql.Open("postgres", connStr)
+
+			if err != nil {
+				llog.Err(err)
+			}
+
+			if err = db.Ping(); err != nil {
+				llog.Err(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
+			}
+
+			rows, err := db.Query(
+				`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
+				FROM feed_items 
+				WHERE to_tsvector(title || ' ' || description || ' ' || content) @@ plainto_tsquery($1)
+				ORDER BY published_parsed DESC
+				LIMIT 50`, searchQuery)
+
+			if err != nil {
+				llog.Err(err)
+				http.Error(w, "Database query error", http.StatusInternalServerError)
+				return
+			}
+
+			defer rows.Close()
+
+			var source string
+			var title string
+			var description string
+			var link string
+			var published string
+			var published_parsed *time.Time
+			var linkImage string
+			var uuid string
+
+			items := []NewsItem{}
+			for rows.Next() {
+				err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &uuid)
+				if err != nil {
+					llog.Err(err)
+					http.Error(w, "Database scan error", http.StatusInternalServerError)
+					return
+				}
+
+				items = append(items, NewsItem{
+					Source:          source,
+					Title:           title,
+					Description:     description,
+					Link:            link,
+					Published:       published,
+					PublishedParsed: published_parsed,
+					LinkImage:       linkImage,
+					Uuid:            uuid,
+				})
+			}
+
+			response := map[string]interface{}{
+				"query": searchQuery,
+				"items": items,
+				"total": len(items),
+			}
+
+			responseJson, _ := json.Marshal(response)
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusOK)
+			w.Write(responseJson)
+		}
+	}
+}
+
+func HealthCheckHandler(database config.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodOptions:
+			HandleMethodOptions(w, req, "GET, OPTIONS")
+		case http.MethodGet:
+			connStr := database.Postgres
+			db, err := sql.Open("postgres", connStr)
+
+			if err != nil {
+				llog.Err(err)
+			}
+
+			if err = db.Ping(); err != nil {
+				llog.Err(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		}
+	}
+}
+
+func NotFoundHandler(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusNotFound)
+	w.Write([]byte("Endpoint Not Found"))
+}
+
+func HandleMethodOptions(w http.ResponseWriter, req *http.Request, allowedMethods string) {
+	w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
 }
