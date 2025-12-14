@@ -12,8 +12,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/janevala/home_be/config"
-	"github.com/janevala/home_be/llog"
+	B "github.com/janevala/home_be/build"
+	Conf "github.com/janevala/home_be/config"
 	_ "github.com/lib/pq"
 )
 
@@ -57,7 +57,7 @@ func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
 		if req.Body != nil {
 			bodyBytes, err = io.ReadAll(req.Body)
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				return
 			}
 			defer req.Body.Close()
@@ -68,26 +68,26 @@ func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
 
 		if len(bodyBytes) > 0 {
 			if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				return
 			}
 			err := json.Unmarshal(bodyBytes, &loginObject)
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				return
 			}
 		} else {
-			llog.Out("Body: No Body Supplied\n")
+			B.LogOut("Body: No Body Supplied\n")
 		}
 
 		if (loginObject.Username == "123") && (loginObject.Password == "123") {
-			llog.Out("Logged in as %s\n", loginObject.Username)
+			B.LogOut("Logged in as %s\n", loginObject.Username)
 
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(loginObject.Username))
 		} else {
-			llog.Out("Invalid credentials for %s\n", loginObject.Username)
+			B.LogOut("Invalid credentials for %s\n", loginObject.Username)
 
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Invalid Credentials"))
@@ -95,14 +95,14 @@ func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func SitesHandler(sites config.SitesConfig) http.HandlerFunc {
+func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
-				llog.Out("Invalid URI")
+				B.LogOut("Invalid URI")
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte("Invalid URI"))
 				return
@@ -116,7 +116,7 @@ func SitesHandler(sites config.SitesConfig) http.HandlerFunc {
 	}
 }
 
-func ArchiveHandler(database config.Database) http.HandlerFunc {
+func ArchiveHandler(database Conf.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
@@ -138,17 +138,19 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 				}
 			}
 
-			llog.Out("Limit: %d, Offset: %d\n", limit, offset)
+			B.LogOut("Limit: %d, Offset: %d\n", limit, offset)
 
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
 
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
 			}
 
 			if err = db.Ping(); err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				http.Error(w, "Database connection error", http.StatusInternalServerError)
 				return
 			}
@@ -157,7 +159,7 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 			var totalItems int
 			err = db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&totalItems)
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				http.Error(w, "Database count error", http.StatusInternalServerError)
 				return
 			}
@@ -171,7 +173,7 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 				limit, offset)
 
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				http.Error(w, "Database query error", http.StatusInternalServerError)
 				return
 			}
@@ -191,7 +193,7 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 			for rows.Next() {
 				err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &uuid)
 				if err != nil {
-					llog.Err(err)
+					B.LogErr(err)
 					http.Error(w, "Database scan error", http.StatusInternalServerError)
 					return
 				}
@@ -224,7 +226,7 @@ func ArchiveHandler(database config.Database) http.HandlerFunc {
 	}
 }
 
-func SearchHandler(database config.Database) http.HandlerFunc {
+func SearchHandler(database Conf.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
@@ -233,15 +235,23 @@ func SearchHandler(database config.Database) http.HandlerFunc {
 			queryParams := req.URL.Query()
 			searchQuery := queryParams.Get("q")
 
+			if searchQuery == "" {
+				B.LogErr("Search query is empty")
+				http.Error(w, "Search query cannot be empty", http.StatusBadRequest)
+				return
+			}
+
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
 
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
 			}
 
 			if err = db.Ping(); err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				http.Error(w, "Database connection error", http.StatusInternalServerError)
 				return
 			}
@@ -254,7 +264,7 @@ func SearchHandler(database config.Database) http.HandlerFunc {
 				LIMIT 50`, searchQuery)
 
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				http.Error(w, "Database query error", http.StatusInternalServerError)
 				return
 			}
@@ -274,7 +284,7 @@ func SearchHandler(database config.Database) http.HandlerFunc {
 			for rows.Next() {
 				err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &uuid)
 				if err != nil {
-					llog.Err(err)
+					B.LogErr(err)
 					http.Error(w, "Database scan error", http.StatusInternalServerError)
 					return
 				}
@@ -306,7 +316,7 @@ func SearchHandler(database config.Database) http.HandlerFunc {
 	}
 }
 
-func HealthCheckHandler(database config.Database) http.HandlerFunc {
+func HealthCheckHandler(database Conf.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
@@ -316,11 +326,13 @@ func HealthCheckHandler(database config.Database) http.HandlerFunc {
 			db, err := sql.Open("postgres", connStr)
 
 			if err != nil {
-				llog.Err(err)
+				B.LogErr(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
 			}
 
 			if err = db.Ping(); err != nil {
-				llog.Err(err)
+				B.LogErr(err)
 				http.Error(w, "Database connection error", http.StatusInternalServerError)
 				return
 			}

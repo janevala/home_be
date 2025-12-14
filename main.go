@@ -11,8 +11,8 @@ import (
 	"time"
 
 	Api "github.com/janevala/home_be/api"
-	"github.com/janevala/home_be/config"
-	"github.com/janevala/home_be/llog"
+	B "github.com/janevala/home_be/build"
+	Conf "github.com/janevala/home_be/config"
 )
 
 type LoggerHandler struct {
@@ -25,13 +25,13 @@ func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handler.ServeHTTP(w, r)
 }
 
-var cfg *config.Config
+var cfg *Conf.Config
 
 func main() {
 	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
 
 	if cfg == nil {
-		panic("Config is nil")
+		B.LogFatal("Config is nil")
 	}
 
 	server := http.Server{
@@ -41,41 +41,46 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	llog.Out("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
-	llog.Out("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
-	llog.Out("Server listening on: " + cfg.Server.Port)
+	B.LogOut("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
+	B.LogOut("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
+	B.LogOut("Server listening on: " + cfg.Server.Port)
 
-	llog.Out("Starting with configuration:")
-	llog.Out("Server: " + fmt.Sprintf("%#v", cfg.Server))
-	llog.Out("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
-	llog.Out("Database: " + fmt.Sprintf("%#v", cfg.Database))
-	llog.Out("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
+	B.LogOut("Starting with configuration:")
+	B.LogOut("Server: " + fmt.Sprintf("%#v", cfg.Server))
+	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
+	B.LogOut("Database: " + fmt.Sprintf("%#v", cfg.Database))
+	B.LogOut("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
 
-	llog.Fatal(server.ListenAndServe())
+	B.LogFatal(server.ListenAndServe())
 }
 
 func init() {
 	var err error
-	cfg, err = config.LoadConfig("config.json")
+	cfg, err = Conf.LoadConfig("config.json")
 	if err != nil {
-		llog.Fatal(err)
-		panic(err)
+		B.LogFatal(err)
 	}
 
 	connStr := cfg.Database.Postgres
 	db, err := sql.Open("postgres", connStr)
 
 	if err != nil {
-		llog.Fatal(err)
-		panic(err)
+		if B.IsProduction() {
+			B.LogFatal(err)
+		} else {
+			B.LogErr(err)
+		}
 	}
 
 	if err = db.Ping(); err != nil {
-		llog.Fatal(err)
-		panic(err)
+		if B.IsProduction() {
+			B.LogFatal(err)
+		} else {
+			B.LogErr(err)
+		}
 	}
 
-	llog.Out("Server port: " + cfg.Server.Port)
+	B.LogOut("Server port: " + cfg.Server.Port)
 
 	httpRouter := http.NewServeMux()
 
@@ -83,7 +88,7 @@ func init() {
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
-			llog.Err(err)
+			B.LogErr(err)
 			http.Error(w, "Could not load template", http.StatusInternalServerError)
 			return
 		}
@@ -101,11 +106,12 @@ func init() {
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
-			llog.Err(err)
+			B.LogErr(err)
 			http.Error(w, "Could not execute template", http.StatusInternalServerError)
 			return
 		}
-		llog.Out("Request served: %s %s", r.Method, r.URL.Path)
+
+		B.LogOut("Request served: %s %s", r.Method, r.URL.Path)
 	})
 	http.Handle("/", httpRouter)
 

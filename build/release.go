@@ -1,19 +1,18 @@
-//go:build debug
+//go:build release
 
-// llog/debug.go
-package llog
+// build/release.go
+package build
 
 import "log"
 
-func Out(v ...any) {
-	if len(v) == 0 {
-		return
-	}
-
-	log.Printf("[OUT] %v", v...)
+func IsProduction() bool {
+	return true
 }
 
-func Err(err error) {
+func LogOut(v ...any) {
+}
+
+func LogErr(err error) {
 	if err == nil {
 		return
 	}
@@ -21,7 +20,7 @@ func Err(err error) {
 	log.Printf("[ERROR] %s", err.Error())
 }
 
-func Fatal(v ...any) {
+func LogFatal(v ...any) {
 	if len(v) == 0 {
 		return
 	}
@@ -29,7 +28,7 @@ func Fatal(v ...any) {
 	log.Fatalf("[FATAL] %v", v...)
 }
 
-func Fatalf(format string, args ...interface{}) {
+func LogFatalf(format string, args ...interface{}) {
 	if format == "" {
 		return
 	}
