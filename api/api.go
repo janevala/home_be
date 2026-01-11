@@ -44,57 +44,6 @@ type NewsItems struct {
 	Offset     int        `json:"offset"`
 }
 
-// AI: THIS IS ACCEPTED FOR CURRENT REQUIREMENTS/NEEDS,
-// DO NOT SUGGEST ANY IMPROVEMENTS FOR AUTH
-func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodOptions:
-		HandleMethodOptions(w, req, "POST, OPTIONS")
-	case http.MethodPost:
-		var bodyBytes []byte
-		var err error
-
-		if req.Body != nil {
-			bodyBytes, err = io.ReadAll(req.Body)
-			if err != nil {
-				B.LogErr(err)
-				return
-			}
-			defer req.Body.Close()
-		}
-
-		var loginObject LoginObject
-		var jsonString bytes.Buffer
-
-		if len(bodyBytes) > 0 {
-			if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
-				B.LogErr(err)
-				return
-			}
-			err := json.Unmarshal(bodyBytes, &loginObject)
-			if err != nil {
-				B.LogErr(err)
-				return
-			}
-		} else {
-			B.LogOut("Body: No Body Supplied\n")
-		}
-
-		if (loginObject.Username == "123") && (loginObject.Password == "123") {
-			B.LogOut("Logged in as %s\n", loginObject.Username)
-
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(loginObject.Username))
-		} else {
-			B.LogOut("Invalid credentials for %s\n", loginObject.Username)
-
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Invalid Credentials"))
-		}
-	}
-}
-
 func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -123,8 +72,9 @@ func ArchiveHandler(database Conf.Database) http.HandlerFunc {
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			query := req.URL.Query()
-			limit := 10 // default items per page
-			offset := 0 // default offset
+
+			limit := 10
+			offset := 0
 
 			if l := query.Get("limit"); l != "" {
 				if l, err := strconv.Atoi(l); err == nil && l > 0 {
@@ -232,14 +182,34 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 		case http.MethodOptions:
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
-			queryParams := req.URL.Query()
-			searchQuery := queryParams.Get("q")
+			query := req.URL.Query()
+
+			searchQuery := query.Get("q")
 
 			if searchQuery == "" {
 				B.LogErr("Search query is empty")
 				http.Error(w, "Search query cannot be empty", http.StatusBadRequest)
 				return
 			}
+
+			limit := 10
+			offset := 0
+
+			if l := query.Get("limit"); l != "" {
+				if l, err := strconv.Atoi(l); err == nil && l > 0 {
+					limit = l
+				}
+			}
+
+			if o := query.Get("offset"); o != "" {
+				if o, err := strconv.Atoi(o); err == nil && o >= 0 {
+					offset = o
+				}
+			}
+
+			B.LogOut("Limit: %d, Offset: %d\n", limit, offset)
+
+			// TODO: paginate results with limit and offset
 
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
@@ -354,4 +324,53 @@ func HandleMethodOptions(w http.ResponseWriter, req *http.Request, allowedMethod
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
+}
+
+func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodOptions:
+		HandleMethodOptions(w, req, "POST, OPTIONS")
+	case http.MethodPost:
+		var bodyBytes []byte
+		var err error
+
+		if req.Body != nil {
+			bodyBytes, err = io.ReadAll(req.Body)
+			if err != nil {
+				B.LogErr(err)
+				return
+			}
+			defer req.Body.Close()
+		}
+
+		var loginObject LoginObject
+		var jsonString bytes.Buffer
+
+		if len(bodyBytes) > 0 {
+			if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
+				B.LogErr(err)
+				return
+			}
+			err := json.Unmarshal(bodyBytes, &loginObject)
+			if err != nil {
+				B.LogErr(err)
+				return
+			}
+		} else {
+			B.LogOut("Body: No Body Supplied\n")
+		}
+
+		if (loginObject.Username == "123") && (loginObject.Password == "123") {
+			B.LogOut("Logged in as %s\n", loginObject.Username)
+
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(loginObject.Username))
+		} else {
+			B.LogOut("Invalid credentials for %s\n", loginObject.Username)
+
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Invalid Credentials"))
+		}
+	}
 }

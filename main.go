@@ -129,7 +129,7 @@ func init() {
 	// httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.Ollama))
 	// httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.Ollama))
 
-	// if we reach here, use Api.NotFoundHandler
+	// TODO: if we reach here, use Api.NotFoundHandler
 
 	http.Handle("/auth", httpRouter)
 	http.Handle("/sites", httpRouter)

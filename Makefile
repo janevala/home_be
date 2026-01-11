@@ -1,3 +1,6 @@
+# Any args passed to the make script, use with $(call args, default_value)
+# args = `arg="$(filter-out $@,$(MAKECMDGOALS))" && echo $${arg:-${1}}`
+
 BINARY_NAME=home_be
 GOOS=linux
 BUILDARCH ?= $(shell uname -m)
@@ -19,8 +22,8 @@ build: clean
 	go get github.com/google/uuid
 	go get github.com/lib/pq
 	# go get github.com/modelcontextprotocol/go-sdk/mcp
-	go get github.com/rifaideen/talkative
 	go get github.com/graphql-go/graphql
+# 	go get github.com/rifaideen/talkative
 
 debug: build
 	GOARCH=${BUILDARCH} go build -tags debug -o ${BINARY_NAME}_${BUILDARCH} main.go
