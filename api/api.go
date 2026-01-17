@@ -229,7 +229,7 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 			rows, err := db.Query(
 				`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
 				FROM feed_items 
-				WHERE to_tsvector(title || ' ' || description || ' ' || content) @@ plainto_tsquery($1)
+				WHERE to_tsvector(title || ' ' || description) @@ plainto_tsquery($1)
 				ORDER BY published_parsed DESC
 				LIMIT 50`, searchQuery)
 
