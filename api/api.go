@@ -271,13 +271,20 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 				})
 			}
 
-			response := map[string]interface{}{
-				"query": searchQuery,
-				"items": items,
-				"total": len(items),
+			newsItems := NewsItems{
+				Items:      items,
+				TotalItems: len(items),
+				Limit:      limit,
+				Offset:     offset,
 			}
 
-			responseJson, _ := json.Marshal(response)
+			// response := map[string]interface{}{
+			// 	"query": searchQuery,
+			// 	"items": items,
+			// 	"total": len(items),
+			// }
+
+			responseJson, _ := json.Marshal(newsItems)
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
