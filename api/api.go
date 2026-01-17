@@ -187,7 +187,7 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 			searchQuery := query.Get("q")
 
 			if searchQuery == "" {
-				B.LogErr("Search query is empty")
+				B.LogOut("Search query cannot be empty")
 				http.Error(w, "Search query cannot be empty", http.StatusBadRequest)
 				return
 			}
