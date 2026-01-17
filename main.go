@@ -122,20 +122,18 @@ func init() {
 	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(cfg.Database))
 	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(cfg.Database))
-	httpRouter.HandleFunc("OPTIONS /q", Api.SearchHandler(cfg.Database))
-	httpRouter.HandleFunc("GET /q", Api.SearchHandler(cfg.Database))
+	httpRouter.HandleFunc("OPTIONS /search", Api.SearchHandler(cfg.Database))
+	httpRouter.HandleFunc("GET /search", Api.SearchHandler(cfg.Database))
 	httpRouter.HandleFunc("OPTIONS /health", Api.HealthCheckHandler(cfg.Database))
 	httpRouter.HandleFunc("GET /health", Api.HealthCheckHandler(cfg.Database))
 	// httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.Ollama))
 	// httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.Ollama))
 
 	// TODO: if we reach here, use Api.NotFoundHandler
-
 	http.Handle("/auth", httpRouter)
 	http.Handle("/sites", httpRouter)
 	http.Handle("/archive", httpRouter)
-	http.Handle("/q", httpRouter)
+	http.Handle("/search", httpRouter)
 	http.Handle("/health", httpRouter)
 	// http.Handle("/explain", httpRouter)
-
 }
