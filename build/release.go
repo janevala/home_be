@@ -5,6 +5,12 @@ package build
 
 import "log"
 
+var logger *log.Logger
+
+func SetLogger(l *log.Logger) {
+	logger = l
+}
+
 func IsProduction() bool {
 	return true
 }
@@ -13,25 +19,25 @@ func LogOut(v ...any) {
 }
 
 func LogErr(err error) {
-	if err == nil {
+	if err == nil || logger == nil {
 		return
 	}
 
-	log.Printf("[ERROR] %s", err.Error())
+	logger.Printf("[ERROR] %s", err.Error())
 }
 
 func LogFatal(v ...any) {
-	if len(v) == 0 {
+	if len(v) == 0 || logger == nil {
 		return
 	}
 
-	log.Fatalf("[FATAL] %v", v...)
+	logger.Fatalf("[FATAL] %v", v...)
 }
 
 func LogFatalf(format string, args ...interface{}) {
-	if format == "" {
+	if format == "" || logger == nil {
 		return
 	}
 
-	log.Fatalf("[FATAL] "+format, args...)
+	logger.Fatalf("[FATAL] "+format, args...)
 }

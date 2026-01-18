@@ -59,8 +59,8 @@ func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 
 			responseJson, _ := json.Marshal(sites)
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Write(responseJson)
 			w.WriteHeader(http.StatusOK)
+			w.Write(responseJson)
 		}
 	}
 }
@@ -87,8 +87,6 @@ func ArchiveHandler(database Conf.Database) http.HandlerFunc {
 					offset = o
 				}
 			}
-
-			B.LogOut("Limit: %d, Offset: %d\n", limit, offset)
 
 			connStr := database.Postgres
 			db, err := sql.Open("postgres", connStr)
@@ -192,23 +190,6 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 				return
 			}
 
-			limit := 10
-			offset := 0
-
-			if l := query.Get("limit"); l != "" {
-				if l, err := strconv.Atoi(l); err == nil && l > 0 {
-					limit = l
-				}
-			}
-
-			if o := query.Get("offset"); o != "" {
-				if o, err := strconv.Atoi(o); err == nil && o >= 0 {
-					offset = o
-				}
-			}
-
-			B.LogOut("Limit: %d, Offset: %d\n", limit, offset)
-
 			// TODO: paginate results with limit and offset
 
 			connStr := database.Postgres
@@ -226,10 +207,15 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 				return
 			}
 
+			db.SetMaxOpenConns(500)
+			db.SetConnMaxLifetime(5 * time.Second)
+
 			rows, err := db.Query(
 				`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
 				FROM feed_items 
-				WHERE to_tsvector(title || ' ' || description) @@ plainto_tsquery($1)
+				WHERE title ILIKE '%' || $1 || '%' 
+				OR description ILIKE '%' || $1 || '%'
+				OR source ILIKE '%' || $1 || '%'
 				ORDER BY published_parsed DESC
 				LIMIT 50`, searchQuery)
 
@@ -274,15 +260,9 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 			newsItems := NewsItems{
 				Items:      items,
 				TotalItems: len(items),
-				Limit:      limit,
-				Offset:     offset,
+				Limit:      0,
+				Offset:     0,
 			}
-
-			// response := map[string]interface{}{
-			// 	"query": searchQuery,
-			// 	"items": items,
-			// 	"total": len(items),
-			// }
 
 			responseJson, _ := json.Marshal(newsItems)
 			w.Header().Set("Content-Type", "application/json")
@@ -364,17 +344,17 @@ func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 		} else {
-			B.LogOut("Body: No Body Supplied\n")
+			B.LogOut("Body: No Body Supplied")
 		}
 
 		if (loginObject.Username == "123") && (loginObject.Password == "123") {
-			B.LogOut("Logged in as %s\n", loginObject.Username)
+			B.LogOut("Logged in as %s", loginObject.Username)
 
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(loginObject.Username))
 		} else {
-			B.LogOut("Invalid credentials for %s\n", loginObject.Username)
+			B.LogOut("Invalid login attempt for user %s", loginObject.Username)
 
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Invalid Credentials"))

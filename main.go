@@ -21,18 +21,19 @@ type LoggerHandler struct {
 }
 
 func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.logger.Printf("Received request: %s %s", r.Method, r.URL.Path)
+	h.logger.Printf("Received request: %s %s %s", r.Method, r.URL.Path, r.URL.RawQuery)
 	h.handler.ServeHTTP(w, r)
 }
 
 var cfg *Conf.Config
 
 func main() {
-	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
-
 	if cfg == nil {
 		B.LogFatal("Config is nil")
 	}
+
+	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
+	B.SetLogger(logger)
 
 	server := http.Server{
 		Addr:         cfg.Server.Port,
@@ -92,6 +93,7 @@ func init() {
 			http.Error(w, "Could not load template", http.StatusInternalServerError)
 			return
 		}
+
 		data := map[string]interface{}{
 			"BuildTime":     time.Now().Format(time.RFC3339),
 			"GoVersion":     runtime.Version(),
