@@ -6,10 +6,7 @@
 			"version": "1.24"
 		}
 	},
-	"runArgs": [
-		"--privileged",
-		"--network=host"
-	],
+	"runArgs": ["--network=home-network"],
 	"forwardPorts": [
 		7071	
 	],
