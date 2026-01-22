@@ -19,6 +19,6 @@
 			"onAutoForward": "notify"
 		}
 	},
-	"postCreateCommand": "go mod download",
+	"postCreateCommand": "if [ ! -f go.mod ]; then go mod init github.com/janevala/home_be; fi",
 	"remoteUser": "root"
 }
