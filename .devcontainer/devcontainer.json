@@ -1,12 +1,12 @@
 {
-	"name": "Go Dev Container",
+	"name": "api-host",
 	"image": "mcr.microsoft.com/devcontainers/go:1.24",	
 	"features": {
 		"ghcr.io/devcontainers/features/go:1": {
 			"version": "1.24"
 		}
 	},
-	"runArgs": ["--network=home-network"],
+	"runArgs": ["--network=home-network", "--name=api-host"],
 	"forwardPorts": [
 		7071	
 	],
