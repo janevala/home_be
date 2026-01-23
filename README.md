@@ -60,17 +60,11 @@ The application provides the following REST API endpoints:
 - CORS is enabled for all endpoints
 - The server runs on port 7071 by default
 
-# Go notes (see also Makefile)
+# Go notes (modules are listed in Makefile)
 ```
 sudo apt install -y golang
 go mod init github.com/janevala/home_be
-go mod tidy
-go get github.com/mmcdole/gofeed
-go get github.com/google/uuid
-go get github.com/lib/pq
-# go get github.com/modelcontextprotocol/go-sdk/mcp
-go get github.com/rifaideen/talkative
-go get github.com/graphql-go/graphql
+make build
 ```
 
 # Docker notes
