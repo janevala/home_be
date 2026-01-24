@@ -118,8 +118,8 @@ func init() {
 	http.Handle("/", httpRouter)
 
 	/// API
-	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler)
-	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler)
+	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(cfg.Database))
+	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(cfg.Database))
 	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(cfg.Database))

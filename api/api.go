@@ -313,51 +313,63 @@ func HandleMethodOptions(w http.ResponseWriter, req *http.Request, allowedMethod
 	w.WriteHeader(http.StatusOK)
 }
 
-func FakeAuthHandler(w http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodOptions:
-		HandleMethodOptions(w, req, "POST, OPTIONS")
-	case http.MethodPost:
-		var bodyBytes []byte
-		var err error
+func FakeAuthHandler(database Conf.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodOptions:
+			HandleMethodOptions(w, req, "POST, OPTIONS")
+		case http.MethodPost:
+			var bodyBytes []byte
+			var err error
 
-		if req.Body != nil {
-			bodyBytes, err = io.ReadAll(req.Body)
-			if err != nil {
-				B.LogErr(err)
-				return
+			if req.Body != nil {
+				bodyBytes, err = io.ReadAll(req.Body)
+				if err != nil {
+					B.LogErr(err)
+					return
+				}
+				defer req.Body.Close()
 			}
-			defer req.Body.Close()
-		}
 
-		var loginObject LoginObject
-		var jsonString bytes.Buffer
+			var loginObject LoginObject
+			var jsonString bytes.Buffer
 
-		if len(bodyBytes) > 0 {
-			if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
-				B.LogErr(err)
-				return
+			if len(bodyBytes) > 0 {
+				if err = json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
+					B.LogErr(err)
+					return
+				}
+				err := json.Unmarshal(bodyBytes, &loginObject)
+				if err != nil {
+					B.LogErr(err)
+					return
+				}
+			} else {
+				B.LogOut("Body: No Body Supplied")
 			}
-			err := json.Unmarshal(bodyBytes, &loginObject)
-			if err != nil {
-				B.LogErr(err)
-				return
+
+			connStr := database.Postgres
+			db, err := sql.Open("postgres", connStr)
+			var dbOk bool = false
+
+			if err == nil {
+				if err = db.Ping(); err == nil {
+					dbOk = true
+				}
 			}
-		} else {
-			B.LogOut("Body: No Body Supplied")
-		}
 
-		if (loginObject.Username == "123") && (loginObject.Password == "123") {
-			B.LogOut("Logged in as %s", loginObject.Username)
+			if (loginObject.Username == "123") && (loginObject.Password == "123") && dbOk {
+				B.LogOut("Logged in as %s", loginObject.Username)
 
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(loginObject.Username))
-		} else {
-			B.LogOut("Invalid login attempt for user %s", loginObject.Username)
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(loginObject.Username))
+			} else {
+				B.LogOut("Invalid login attempt for user %s", loginObject.Username)
 
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Invalid Credentials"))
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("Invalid Credentials"))
+			}
 		}
 	}
 }
