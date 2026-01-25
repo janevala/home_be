@@ -128,8 +128,8 @@ func init() {
 	httpRouter.HandleFunc("GET /search", Api.SearchHandler(cfg.Database))
 	httpRouter.HandleFunc("OPTIONS /health", Api.HealthCheckHandler(cfg.Database))
 	httpRouter.HandleFunc("GET /health", Api.HealthCheckHandler(cfg.Database))
-	// httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.Ollama))
-	// httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.Ollama))
+	httpRouter.HandleFunc("OPTIONS /refresh", Api.ArchiveRefreshHandler(cfg.Sites, cfg.Database))
+	httpRouter.HandleFunc("GET /refresh", Api.ArchiveRefreshHandler(cfg.Sites, cfg.Database))
 
 	// TODO: if we reach here, use Api.NotFoundHandler
 	http.Handle("/auth", httpRouter)
@@ -137,5 +137,5 @@ func init() {
 	http.Handle("/archive", httpRouter)
 	http.Handle("/search", httpRouter)
 	http.Handle("/health", httpRouter)
-	// http.Handle("/explain", httpRouter)
+	http.Handle("/refresh", httpRouter)
 }

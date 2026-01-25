@@ -4,17 +4,22 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 
+	"github.com/google/uuid"
 	B "github.com/janevala/home_be/build"
 	Conf "github.com/janevala/home_be/config"
 	_ "github.com/lib/pq"
+	"github.com/mmcdole/gofeed"
 )
 
 type LoginObject struct {
@@ -172,6 +177,219 @@ func ArchiveHandler(database Conf.Database) http.HandlerFunc {
 			w.Write(responseJson)
 		}
 	}
+}
+
+func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodOptions:
+			HandleMethodOptions(w, req, "GET, OPTIONS")
+		case http.MethodGet:
+			connStr := database.Postgres
+			db, err := sql.Open("postgres", connStr)
+
+			if err != nil {
+				B.LogErr(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
+			}
+
+			if err = db.Ping(); err != nil {
+				B.LogErr(err)
+				http.Error(w, "Database connection error", http.StatusInternalServerError)
+				return
+			}
+
+			row, err := db.Query("SELECT created FROM feed_items ORDER BY created DESC LIMIT 1")
+
+			if err != nil {
+				B.LogErr(err)
+				http.Error(w, "Database refresh error", http.StatusInternalServerError)
+				return
+			}
+
+			defer row.Close()
+
+			if row != nil {
+				for row.Next() {
+					var now = time.Now()
+					var lastCreated time.Time
+					err := row.Scan(&lastCreated)
+					if err != nil {
+						B.LogErr(err)
+						http.Error(w, "Database scan error", http.StatusInternalServerError)
+						return
+					}
+					if lastCreated.Hour() <= now.Add(-5*time.Hour).Hour() {
+						B.LogOut("Starting archive refresh...")
+
+						w.Header().Set("Access-Control-Allow-Origin", "*")
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("Archive refresh started"))
+
+						// var wg sync.WaitGroup
+						// wg.Add(1)
+
+						// go func() {
+						// 	defer wg.Done()
+						// 	defer B.LogOut("Crawling completed")
+
+						// 	crawl(sites, database)
+						// }()
+
+						// wg.Wait()
+					} else {
+						B.LogOut("Archive refresh skipped: last refresh was recent enough")
+						w.Header().Set("Access-Control-Allow-Origin", "*")
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("Archive refresh skipped: last refresh was recent enough"))
+					}
+				}
+			}
+		}
+	}
+}
+
+func crawl(sites Conf.SitesConfig, database Conf.Database) {
+	feedParser := gofeed.NewParser()
+
+	var combinedItems []*NewsItem = []*NewsItem{}
+	for i := 0; i < len(sites.Sites); i++ {
+		feed, err := feedParser.ParseURL(sites.Sites[i].Url)
+		if err != nil {
+			B.LogFatal(err)
+		} else {
+			if feed.Image != nil {
+				for j := 0; j < len(feed.Items); j++ {
+					feed.Items[j].Image = feed.Image
+				}
+			} else {
+				for j := 0; j < len(feed.Items); j++ {
+					feed.Items[j].Image = &gofeed.Image{
+						URL:   "https://github.com/janevala/home_be_crawler.git",
+						Title: "N/A",
+					}
+				}
+			}
+
+			var items []*NewsItem = []*NewsItem{}
+			for j := 0; j < len(feed.Items); j++ {
+				NewsItem := &NewsItem{
+					Source:          sites.Sites[i].Title,
+					Title:           strings.TrimSpace(feed.Items[j].Title),
+					Description:     feed.Items[j].Description,
+					Content:         feed.Items[j].Content,
+					Link:            feed.Items[j].Link,
+					Published:       feed.Items[j].Published,
+					PublishedParsed: feed.Items[j].PublishedParsed,
+					LinkImage:       feed.Items[j].Image.URL,
+					Uuid:            uuid.NewString(),
+				}
+
+				items = append(items, NewsItem)
+			}
+
+			combinedItems = append(combinedItems, items...)
+		}
+	}
+
+	if len(combinedItems) > 0 {
+		for i := 0; i < len(combinedItems); i++ {
+			combinedItems[i].Description = ellipticalTruncate(combinedItems[i].Description, 500)
+
+			// Hashing title to create unique ID, that serves as mechanism to prevent duplicates in DB
+			uuidString := base64.StdEncoding.EncodeToString([]byte(ellipticalTruncate(combinedItems[i].Title, 35)))
+			combinedItems[i].Uuid = uuidString
+		}
+
+		sort.Slice(combinedItems, func(i, j int) bool {
+			return combinedItems[i].PublishedParsed.After(*combinedItems[j].PublishedParsed)
+		})
+
+		connStr := database.Postgres
+		db, err := sql.Open("postgres", connStr)
+
+		if err != nil {
+			B.LogFatal(err)
+		}
+
+		if err = db.Ping(); err != nil {
+			B.LogFatal(err)
+		} else {
+			B.LogOut("Connected to database successfully")
+		}
+
+		createTableIfNeeded(db)
+
+		var pkAccumulated int
+		for i := 0; i < len(combinedItems); i++ {
+			var pk = insertItem(db, combinedItems[i])
+			if pk == 0 {
+				continue
+			}
+
+			if pk <= pkAccumulated {
+				B.LogFatal("PK ERROR")
+			} else {
+				pkAccumulated = pk
+			}
+		}
+
+		defer db.Close()
+	}
+}
+
+func createTableIfNeeded(db *sql.DB) {
+	query := `CREATE TABLE IF NOT EXISTS feed_items (
+		id SERIAL PRIMARY KEY,
+		title VARCHAR(300) NOT NULL,
+		description VARCHAR(1000) NOT NULL,
+		link VARCHAR(500) NOT NULL,
+		published timestamp NOT NULL,
+		published_parsed timestamp NOT NULL,
+		source VARCHAR(300) NOT NULL,
+		thumbnail VARCHAR(500),
+		uuid VARCHAR(300) NOT NULL,
+		created timestamp DEFAULT NOW(),
+		UNIQUE (uuid)
+	)`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		B.LogFatal(err)
+	}
+}
+
+func insertItem(db *sql.DB, item *NewsItem) int {
+	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, thumbnail, uuid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING RETURNING id"
+
+	var pk int
+	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Source, item.LinkImage, item.Uuid).Scan(&pk)
+
+	if err != nil {
+		B.LogOut(err.Error() + " - duplicate uuid: " + item.Uuid)
+	} else {
+		B.LogOut("Inserted item (pk: " + strconv.Itoa(pk) + "): " + ellipticalTruncate(item.Title, 35))
+	}
+
+	return pk
+}
+
+// https://stackoverflow.com/a/73939904 find better way with AI if needed
+func ellipticalTruncate(text string, maxLen int) string {
+	lastSpaceIx := maxLen
+	len := 0
+	for i, r := range text {
+		if unicode.IsSpace(r) {
+			lastSpaceIx = i
+		}
+		len++
+		if len > maxLen {
+			return text[:lastSpaceIx] + "..."
+		}
+	}
+
+	return text
 }
 
 func SearchHandler(database Conf.Database) http.HandlerFunc {
