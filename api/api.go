@@ -244,7 +244,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.
 
 						wg.Wait()
 					} else {
-						B.LogOut("Archive refresh skipped: last refresh was recent enough")
+						B.LogOut("News archive up to date")
 						w.Header().Set("Access-Control-Allow-Origin", "*")
 						w.WriteHeader(http.StatusOK)
 						w.Write([]byte("Archive refresh skipped: last refresh was recent enough"))
