@@ -2,6 +2,14 @@
 package ai
 
 import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"github.com/graphql-go/graphql"
+	B "github.com/janevala/home_be/build"
+	"github.com/janevala/home_be/config"
+	"github.com/janevala/home_be/talkative"
 	_ "github.com/lib/pq"
 )
 
@@ -19,99 +27,91 @@ type QueryPost struct {
 	Variables map[string]interface{} `json:"variables"`
 }
 
-// func ExplainHandler(ollama config.Ollama) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, req *http.Request) {
-// 		switch req.Method {
+func ExplainHandler(ollama config.Ollama) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
 
-// 		case http.MethodOptions:
-// 			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-// 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-// 			w.Header().Set("Access-Control-Allow-Origin", "*")
+		case http.MethodOptions:
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 
-// 			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusOK)
 
-// 		case http.MethodPost:
-// 			if !strings.Contains(req.URL.RawQuery, "code=123") {
-// 				llog.Out("Invalid request: missing or incorrect code parameter")
+		case http.MethodPost:
+			var q QueryPost
+			if err := json.NewDecoder(req.Body).Decode(&q); err != nil {
+				w.WriteHeader(400)
+				return
+			}
 
-// 				w.WriteHeader(http.StatusBadRequest)
-// 				w.Write([]byte("Invalid URI"))
-// 				return
-// 			}
+			fields := graphql.Fields{
+				"query": &graphql.Field{
+					Type: graphql.String,
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						questionItem := QuestionItem{
+							Question: p.Args["question"].(string),
+						}
 
-// 			var q QueryPost
-// 			if err := json.NewDecoder(req.Body).Decode(&q); err != nil {
-// 				w.WriteHeader(400)
-// 				return
-// 			}
+						answerItem := queryAI(questionItem, ollama)
 
-// 			fields := graphql.Fields{
-// 				"query": &graphql.Field{
-// 					Type: graphql.String,
-// 					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-// 						questionItem := QuestionItem{
-// 							Question: p.Args["question"].(string),
-// 						}
+						return answerItem.Answer, nil
+					},
+				},
+			}
 
-// 						answerItem := queryAI(questionItem, ollama)
+			rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
+			schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
+			schema, err := graphql.NewSchema(schemaConfig)
+			if err != nil {
+				B.LogErr(err)
+			}
 
-// 						return answerItem.Answer, nil
-// 					},
-// 				},
-// 			}
+			params := graphql.Params{Schema: schema, RequestString: q.Query}
+			r := graphql.Do(params)
 
-// 			rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
-// 			schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
-// 			schema, err := graphql.NewSchema(schemaConfig)
-// 			if err != nil {
-// 				llog.Err(err)
-// 			}
+			responseJson, _ := json.Marshal(r)
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Write(responseJson)
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+}
 
-// 			params := graphql.Params{Schema: schema, RequestString: q.Query}
-// 			r := graphql.Do(params)
+func queryAI(q QuestionItem, ollama config.Ollama) AnswerItem {
+	client, err := talkative.New("http://" + ollama.Host + ":" + ollama.Port)
 
-// 			responseJson, _ := json.Marshal(r)
-// 			w.Header().Set("Access-Control-Allow-Origin", "*")
-// 			w.Write(responseJson)
-// 			w.WriteHeader(http.StatusOK)
-// 		}
-// 	}
-// }
+	if err != nil {
+		panic("Failed to create talkative client")
+	}
 
-// func queryAI(q QuestionItem, ollama config.Ollama) AnswerItem {
-// 	client, err := talkative.New("http://" + ollama.Host + ":" + ollama.Port)
+	response := talkative.ChatResponse{}
+	callback := func(cr *talkative.ChatResponse, err error) {
+		if err != nil {
+			B.LogErr(err)
+			return
+		}
 
-// 	if err != nil {
-// 		panic("Failed to create talkative client")
-// 	}
+		response = *cr
+	}
 
-// 	responseAnswer := talkative.ChatResponse{}
-// 	callback := func(cr *talkative.ChatResponse, err error) {
-// 		if err != nil {
-// 			llog.Err(err)
-// 			return
-// 		}
+	message := talkative.ChatMessage{
+		Role:    talkative.USER,
+		Content: q.Question,
+	}
 
-// 		responseAnswer = *cr
-// 	}
+	b := false
+	done, err := client.Chat(ollama.Model, callback, &talkative.ChatParams{
+		Stream: &b,
+	}, message)
 
-// 	message := talkative.ChatMessage{
-// 		Role:    talkative.USER,
-// 		Content: q.Question,
-// 	}
+	if err != nil {
+		B.LogErr(err)
+	}
 
-// 	b := false
-// 	done, err := client.Chat(ollama.Model, callback, &talkative.ChatParams{
-// 		Stream: &b,
-// 	}, message)
+	<-done
 
-// 	if err != nil {
-// 		llog.Err(err)
-// 	}
+	answerItem := AnswerItem{Answer: response.Message.Content}
 
-// 	<-done
-
-// 	answerItem := AnswerItem{Answer: responseAnswer.Message.Content}
-
-// 	return answerItem
-// }
+	return answerItem
+}

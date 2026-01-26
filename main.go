@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	Ai "github.com/janevala/home_be/ai"
 	Api "github.com/janevala/home_be/api"
 	B "github.com/janevala/home_be/build"
 	Conf "github.com/janevala/home_be/config"
@@ -130,6 +131,8 @@ func init() {
 	httpRouter.HandleFunc("GET /health", Api.HealthCheckHandler(cfg.Database))
 	httpRouter.HandleFunc("OPTIONS /refresh", Api.ArchiveRefreshHandler(cfg.Sites, cfg.Database))
 	httpRouter.HandleFunc("GET /refresh", Api.ArchiveRefreshHandler(cfg.Sites, cfg.Database))
+	httpRouter.HandleFunc("POST /explain", Ai.ExplainHandler(cfg.Ollama))
+	httpRouter.HandleFunc("OPTIONS /explain", Ai.ExplainHandler(cfg.Ollama))
 
 	// TODO: if we reach here, use Api.NotFoundHandler
 	http.Handle("/auth", httpRouter)
@@ -138,4 +141,5 @@ func init() {
 	http.Handle("/search", httpRouter)
 	http.Handle("/health", httpRouter)
 	http.Handle("/refresh", httpRouter)
+	http.Handle("/explain", httpRouter)
 }
