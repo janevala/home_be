@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -215,29 +216,33 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.
 					var now = time.Now()
 					var lastCreated time.Time
 					err := row.Scan(&lastCreated)
+
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
 						return
 					}
-					if lastCreated.Hour() <= now.Add(-5*time.Hour).Hour() {
+
+					if now.Sub(lastCreated) > 5*time.Hour {
 						B.LogOut("Starting archive refresh...")
+						B.LogOut("Last refresh was at: " + lastCreated.String())
+						B.LogOut("Current time is: " + now.String())
 
 						w.Header().Set("Access-Control-Allow-Origin", "*")
 						w.WriteHeader(http.StatusOK)
 						w.Write([]byte("Archive refresh started"))
 
-						// var wg sync.WaitGroup
-						// wg.Add(1)
+						var wg sync.WaitGroup
+						wg.Add(1)
 
-						// go func() {
-						// 	defer wg.Done()
-						// 	defer B.LogOut("Crawling completed")
+						go func() {
+							defer wg.Done()
+							defer B.LogOut("Crawling completed")
 
-						// 	crawl(sites, database)
-						// }()
+							crawl(sites, database)
+						}()
 
-						// wg.Wait()
+						wg.Wait()
 					} else {
 						B.LogOut("Archive refresh skipped: last refresh was recent enough")
 						w.Header().Set("Access-Control-Allow-Origin", "*")
