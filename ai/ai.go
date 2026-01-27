@@ -4,13 +4,12 @@ package ai
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/graphql-go/graphql"
 	B "github.com/janevala/home_be/build"
 	"github.com/janevala/home_be/config"
-	"github.com/janevala/home_be/talkative"
 	_ "github.com/lib/pq"
+	"github.com/rifaideen/talkative"
 )
 
 type QuestionItem struct {

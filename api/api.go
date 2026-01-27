@@ -223,7 +223,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.
 						return
 					}
 
-					if now.Sub(lastCreated) > 5*time.Hour {
+					if now.Sub(lastCreated) > 4*time.Hour {
 						B.LogOut("Starting archive refresh...")
 						B.LogOut("Last refresh was at: " + lastCreated.String())
 						B.LogOut("Current time is: " + now.String())
@@ -247,7 +247,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.
 						B.LogOut("News archive up to date")
 						w.Header().Set("Access-Control-Allow-Origin", "*")
 						w.WriteHeader(http.StatusOK)
-						w.Write([]byte("Archive refresh skipped: last refresh was recent enough"))
+						w.Write([]byte("Archive up to date"))
 					}
 				}
 			}
