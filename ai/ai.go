@@ -2,10 +2,11 @@
 package ai
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 
-	"github.com/graphql-go/graphql"
 	B "github.com/janevala/home_be/build"
 	"github.com/janevala/home_be/config"
 	_ "github.com/lib/pq"
@@ -20,12 +21,6 @@ type AnswerItem struct {
 	Answer string `json:"answer,omitempty"`
 }
 
-type QueryPost struct {
-	Query     string                 `json:"query"`
-	Operation string                 `json:"operationName"`
-	Variables map[string]interface{} `json:"variables"`
-}
-
 func ExplainHandler(ollama config.Ollama) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -34,45 +29,48 @@ func ExplainHandler(ollama config.Ollama) http.HandlerFunc {
 			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-
 			w.WriteHeader(http.StatusOK)
 
 		case http.MethodPost:
-			var q QueryPost
-			if err := json.NewDecoder(req.Body).Decode(&q); err != nil {
-				w.WriteHeader(400)
+			var bodyBytes []byte
+
+			if req.Body != nil {
+				var err error
+				bodyBytes, err = io.ReadAll(req.Body)
+				if err != nil {
+					return
+				}
+				defer req.Body.Close()
+			}
+
+			var questionObject QuestionItem
+			var jsonString bytes.Buffer
+
+			if len(bodyBytes) > 0 {
+				if err := json.Indent(&jsonString, bodyBytes, "", "\t"); err != nil {
+					B.LogErr(err)
+					return
+				}
+				err := json.Unmarshal(bodyBytes, &questionObject)
+				if err != nil {
+					B.LogErr(err)
+					return
+				}
+			} else {
+				B.LogOut("ERROR: Empty body in request")
 				return
 			}
 
-			fields := graphql.Fields{
-				"query": &graphql.Field{
-					Type: graphql.String,
-					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-						questionItem := QuestionItem{
-							Question: p.Args["question"].(string),
-						}
+			var question string = questionObject.Question
+			questionItem := QuestionItem{Question: question}
 
-						answerItem := queryAI(questionItem, ollama)
+			answerItem := queryAI(questionItem, ollama)
 
-						return answerItem.Answer, nil
-					},
-				},
-			}
-
-			rootQuery := graphql.ObjectConfig{Name: "RootQuery", Fields: fields}
-			schemaConfig := graphql.SchemaConfig{Query: graphql.NewObject(rootQuery)}
-			schema, err := graphql.NewSchema(schemaConfig)
-			if err != nil {
-				B.LogErr(err)
-			}
-
-			params := graphql.Params{Schema: schema, RequestString: q.Query}
-			r := graphql.Do(params)
-
-			responseJson, _ := json.Marshal(r)
+			responseJson, _ := json.Marshal(answerItem)
+			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Write(responseJson)
 			w.WriteHeader(http.StatusOK)
+			w.Write(responseJson)
 		}
 	}
 }
