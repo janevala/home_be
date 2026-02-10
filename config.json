@@ -35,6 +35,14 @@
 			{
 				"title": "Dpreview",
 				"url": "https://www.dpreview.com/feeds/news.xml"
+			},
+			{
+				"title": "Ars Technica",
+				"url": "https://feeds.arstechnica.com/arstechnica/index/"
+			},
+			{
+				"title": "Hacker News",
+				"url": "https://news.ycombinator.com/rss"
 			}
 		]
 	}
