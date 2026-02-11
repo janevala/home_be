@@ -62,17 +62,14 @@ func main() {
 }
 
 func init() {
-	cfg, err := Conf.LoadConfig("config.json")
+	var err error
+	cfg, err = Conf.LoadConfig("config.json")
 	if err != nil {
 		B.LogFatal(err)
 	}
 
 	connStr := cfg.Database.Postgres
-	db, err := sql.Open("postgres", connStr)
-	db.SetMaxOpenConns(50)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetConnMaxIdleTime(5 * time.Minute)
+	db, err = sql.Open("postgres", connStr)
 
 	if err != nil {
 		if B.IsProduction() {
@@ -89,6 +86,10 @@ func init() {
 			B.LogErr(err)
 		}
 	}
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	B.LogOut("Server port: " + cfg.Server.Port)
 

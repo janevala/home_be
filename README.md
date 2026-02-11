@@ -37,7 +37,6 @@ The application provides the following REST API endpoints:
       "title": "RSS Feeds",
       "sites": [
         {
-          "uuid": "d0df05cf-0da8-401c-8b93-9dbfb3cb108f",
           "title": "Phoronix",
           "url": "https://www.phoronix.com/rss.php"
         }
