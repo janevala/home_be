@@ -36,6 +36,8 @@ func main() {
 		B.LogFatal("Config is nil")
 	}
 
+	defer db.Close()
+
 	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
 	B.SetLogger(logger)
 
