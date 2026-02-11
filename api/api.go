@@ -50,6 +50,13 @@ type NewsItems struct {
 	Offset     int        `json:"offset"`
 }
 
+func HandleMethodOptions(w http.ResponseWriter, req *http.Request, allowedMethods string) {
+	w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.WriteHeader(http.StatusOK)
+}
+
 func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -71,7 +78,7 @@ func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 	}
 }
 
-func ArchiveHandler(database Conf.Database) http.HandlerFunc {
+func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
@@ -94,24 +101,9 @@ func ArchiveHandler(database Conf.Database) http.HandlerFunc {
 				}
 			}
 
-			connStr := database.Postgres
-			db, err := sql.Open("postgres", connStr)
-
-			if err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-
-			if err = db.Ping(); err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-
 			// Get total count of items
 			var totalItems int
-			err = db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&totalItems)
+			err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&totalItems)
 			if err != nil {
 				B.LogErr(err)
 				http.Error(w, "Database count error", http.StatusInternalServerError)
@@ -180,27 +172,12 @@ func ArchiveHandler(database Conf.Database) http.HandlerFunc {
 	}
 }
 
-func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.HandlerFunc {
+func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
-			connStr := database.Postgres
-			db, err := sql.Open("postgres", connStr)
-
-			if err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-
-			if err = db.Ping(); err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-
 			row, err := db.Query("SELECT created FROM feed_items ORDER BY created DESC LIMIT 1")
 
 			if err != nil {
@@ -239,7 +216,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.
 							defer wg.Done()
 							defer B.LogOut("Crawling completed")
 
-							crawl(sites, database)
+							crawl(sites, db)
 						}()
 
 						wg.Wait()
@@ -255,7 +232,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, database Conf.Database) http.
 	}
 }
 
-func crawl(sites Conf.SitesConfig, database Conf.Database) {
+func crawl(sites Conf.SitesConfig, db *sql.DB) {
 	feedParser := gofeed.NewParser()
 
 	var combinedItems []*NewsItem = []*NewsItem{}
@@ -311,19 +288,6 @@ func crawl(sites Conf.SitesConfig, database Conf.Database) {
 			return combinedItems[i].PublishedParsed.After(*combinedItems[j].PublishedParsed)
 		})
 
-		connStr := database.Postgres
-		db, err := sql.Open("postgres", connStr)
-
-		if err != nil {
-			B.LogFatal(err)
-		}
-
-		if err = db.Ping(); err != nil {
-			B.LogFatal(err)
-		} else {
-			B.LogOut("Connected to database successfully")
-		}
-
 		createTableIfNeeded(db)
 
 		var pkAccumulated int
@@ -347,7 +311,7 @@ func crawl(sites Conf.SitesConfig, database Conf.Database) {
 func createTableIfNeeded(db *sql.DB) {
 	query := `CREATE TABLE IF NOT EXISTS feed_items (
 		id SERIAL PRIMARY KEY,
-		title VARCHAR(300) NOT NULL,
+		title VARCHAR(500) NOT NULL,
 		description VARCHAR(1000) NOT NULL,
 		link VARCHAR(500) NOT NULL,
 		published timestamp NOT NULL,
@@ -397,7 +361,7 @@ func ellipticalTruncate(text string, maxLen int) string {
 	return text
 }
 
-func SearchHandler(database Conf.Database) http.HandlerFunc {
+func SearchHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
@@ -412,26 +376,6 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 				http.Error(w, "Search query cannot be empty", http.StatusBadRequest)
 				return
 			}
-
-			// TODO: paginate results with limit and offset
-
-			connStr := database.Postgres
-			db, err := sql.Open("postgres", connStr)
-
-			if err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-
-			if err = db.Ping(); err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-
-			db.SetMaxOpenConns(500)
-			db.SetConnMaxLifetime(5 * time.Second)
 
 			rows, err := db.Query(
 				`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
@@ -496,47 +440,7 @@ func SearchHandler(database Conf.Database) http.HandlerFunc {
 	}
 }
 
-func HealthCheckHandler(database Conf.Database) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		switch req.Method {
-		case http.MethodOptions:
-			HandleMethodOptions(w, req, "GET, OPTIONS")
-		case http.MethodGet:
-			connStr := database.Postgres
-			db, err := sql.Open("postgres", connStr)
-
-			if err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-
-			if err = db.Ping(); err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database connection error", http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
-		}
-	}
-}
-
-func NotFoundHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("Endpoint Not Found"))
-}
-
-func HandleMethodOptions(w http.ResponseWriter, req *http.Request, allowedMethods string) {
-	w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusOK)
-}
-
-func FakeAuthHandler(database Conf.Database) http.HandlerFunc {
+func FakeAuthHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodOptions:
@@ -571,17 +475,7 @@ func FakeAuthHandler(database Conf.Database) http.HandlerFunc {
 				B.LogOut("Body: No Body Supplied")
 			}
 
-			connStr := database.Postgres
-			db, err := sql.Open("postgres", connStr)
-			var dbOk bool = false
-
-			if err == nil {
-				if err = db.Ping(); err == nil {
-					dbOk = true
-				}
-			}
-
-			if (loginObject.Username == "123") && (loginObject.Password == "123") && dbOk {
+			if (loginObject.Username == "123") && (loginObject.Password == "123") {
 				B.LogOut("Logged in as %s", loginObject.Username)
 
 				w.Header().Set("Access-Control-Allow-Origin", "*")

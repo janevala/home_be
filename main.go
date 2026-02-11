@@ -16,6 +16,11 @@ import (
 	Conf "github.com/janevala/home_be/config"
 )
 
+var (
+	cfg *Conf.Config
+	db  *sql.DB
+)
+
 type LoggerHandler struct {
 	handler http.Handler
 	logger  *log.Logger
@@ -25,8 +30,6 @@ func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.logger.Printf("Received request: %s %s %s", r.Method, r.URL.Path, r.URL.RawQuery)
 	h.handler.ServeHTTP(w, r)
 }
-
-var cfg *Conf.Config
 
 func main() {
 	if cfg == nil {
@@ -57,14 +60,15 @@ func main() {
 }
 
 func init() {
-	var err error
-	cfg, err = Conf.LoadConfig("config.json")
+	cfg, err := Conf.LoadConfig("config.json")
 	if err != nil {
 		B.LogFatal(err)
 	}
 
 	connStr := cfg.Database.Postgres
 	db, err := sql.Open("postgres", connStr)
+	db.SetMaxOpenConns(1000)
+	db.SetConnMaxLifetime(10 * time.Second)
 
 	if err != nil {
 		if B.IsProduction() {
@@ -105,7 +109,7 @@ func init() {
 			"Server":        fmt.Sprintf("%#v", cfg.Server),
 			"Database":      fmt.Sprintf("%#v", cfg.Database.Postgres),
 			"Sites":         fmt.Sprintf("%#v", cfg.Sites),
-			"Ollama":        fmt.Sprintf("%#v", cfg.Ollama), // TODO: sleeper for now
+			"Ollama":        fmt.Sprintf("%#v", cfg.Ollama),
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
@@ -119,27 +123,23 @@ func init() {
 	http.Handle("/", httpRouter)
 
 	/// API
-	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(cfg.Database))
-	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(cfg.Database))
+	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
+	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
 	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
-	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(cfg.Database))
-	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(cfg.Database))
-	httpRouter.HandleFunc("OPTIONS /search", Api.SearchHandler(cfg.Database))
-	httpRouter.HandleFunc("GET /search", Api.SearchHandler(cfg.Database))
-	httpRouter.HandleFunc("OPTIONS /health", Api.HealthCheckHandler(cfg.Database))
-	httpRouter.HandleFunc("GET /health", Api.HealthCheckHandler(cfg.Database))
-	httpRouter.HandleFunc("OPTIONS /refresh", Api.ArchiveRefreshHandler(cfg.Sites, cfg.Database))
-	httpRouter.HandleFunc("GET /refresh", Api.ArchiveRefreshHandler(cfg.Sites, cfg.Database))
+	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(db))
+	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(db))
+	httpRouter.HandleFunc("OPTIONS /search", Api.SearchHandler(db))
+	httpRouter.HandleFunc("GET /search", Api.SearchHandler(db))
+	httpRouter.HandleFunc("OPTIONS /refresh", Api.ArchiveRefreshHandler(cfg.Sites, db))
+	httpRouter.HandleFunc("GET /refresh", Api.ArchiveRefreshHandler(cfg.Sites, db))
 	httpRouter.HandleFunc("POST /translate", Ai.ExplainHandler(cfg.Ollama))
 	httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
 
-	// TODO: if we reach here, use Api.NotFoundHandler
 	http.Handle("/auth", httpRouter)
 	http.Handle("/sites", httpRouter)
 	http.Handle("/archive", httpRouter)
 	http.Handle("/search", httpRouter)
-	http.Handle("/health", httpRouter)
 	http.Handle("/refresh", httpRouter)
 	http.Handle("/translate", httpRouter)
 }
