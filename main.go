@@ -67,8 +67,10 @@ func init() {
 
 	connStr := cfg.Database.Postgres
 	db, err := sql.Open("postgres", connStr)
-	db.SetMaxOpenConns(1000)
-	db.SetConnMaxLifetime(10 * time.Second)
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	if err != nil {
 		if B.IsProduction() {
