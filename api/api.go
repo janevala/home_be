@@ -205,10 +205,6 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 						B.LogOut("Last refresh was at: " + lastCreated.String())
 						B.LogOut("Current time is: " + now.String())
 
-						w.Header().Set("Access-Control-Allow-Origin", "*")
-						w.WriteHeader(http.StatusOK)
-						w.Write([]byte("Archive refresh started"))
-
 						var wg sync.WaitGroup
 						wg.Add(1)
 
@@ -220,6 +216,10 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 						}()
 
 						wg.Wait()
+
+						w.Header().Set("Access-Control-Allow-Origin", "*")
+						w.WriteHeader(http.StatusOK)
+						w.Write([]byte("Archive refresh started"))
 					} else {
 						B.LogOut("News archive up to date")
 						w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -303,8 +303,6 @@ func crawl(sites Conf.SitesConfig, db *sql.DB) {
 				pkAccumulated = pk
 			}
 		}
-
-		defer db.Close()
 	}
 }
 
