@@ -68,8 +68,7 @@ func init() {
 		B.LogFatal(err)
 	}
 
-	connStr := cfg.Database.Postgres
-	db, err = sql.Open("postgres", connStr)
+	db, err = sql.Open("postgres", cfg.Database.Postgres)
 
 	if err != nil {
 		if B.IsProduction() {
