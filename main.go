@@ -48,15 +48,21 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
+	B.LogOut("Go Version: " + runtime.Version())
 	B.LogOut("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
 	B.LogOut("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
 	B.LogOut("Server listening on: " + cfg.Server.Port)
 
-	B.LogOut("Starting with configuration:")
 	B.LogOut("Server: " + fmt.Sprintf("%#v", cfg.Server))
 	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
-	B.LogOut("Database: " + fmt.Sprintf("%#v", cfg.Database))
 	B.LogOut("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
+
+	B.LogOut("Database: " + fmt.Sprintf("%#v", cfg.Database))
+	B.LogOut("Database max connections: " + strconv.Itoa(db.Stats().MaxOpenConnections))
+	B.LogOut("Database open connections: " + strconv.Itoa(db.Stats().OpenConnections))
+	B.LogOut("Database wait count: " + strconv.Itoa(int(db.Stats().WaitCount)))
+	B.LogOut("Database in use connections: " + strconv.Itoa(db.Stats().InUse))
+	B.LogOut("Database idle connections: " + strconv.Itoa(db.Stats().Idle))
 
 	B.LogFatal(server.ListenAndServe())
 }
