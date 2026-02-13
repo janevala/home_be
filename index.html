@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BACKEND CONFIGS</title>
+    <title>{{.BuildTime}}</title>
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
 </head>
 <body>
-    <header>
-        <h2>BACKEND</h2>
-    </header>
+    <!-- <header>
+        <h3>{{.BuildTime}}</h3>
+    </header> -->
     <main>
         <div>
-            <h3>CONFIGS:</h3>
             <p>GoVersion: {{.GoVersion}}</p>
             <p>NumCPU: {{.NumCPU}}</p>
             <p>NumGoroutine: {{.NumGoroutine}}</p>
@@ -21,12 +20,14 @@
             <p>Server: {{.Server}}</p>
             <p>Sites: {{.Sites}}</p>
             <p>Ollama: {{.Ollama}}</p>
-            <p>Database: {{.Database}}</p>
+            <p>Db: {{.Db}}</p>
+            <p>Db stats: {{.DbStats}}</p>
+            <p>Http stats: {{.HTTPStats}}</p>
         </div>
     
     </main>
-    <footer>
+    <!-- <footer>
         <p>BUILD TIME: {{.BuildTime}}</p>
-    </footer>
+    </footer> -->
 </body>
 </html>

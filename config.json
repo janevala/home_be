@@ -11,7 +11,7 @@
 	"ollama": {
 		"host": "192.168.1.160",
 		"port": "11434",
-		"model": "qwen2.5-coder:7b"
+		"model": "translategemma:latest"
 	},
 	"sites": {
 		"title": "RSS Feeds",

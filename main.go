@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	Ai "github.com/janevala/home_be/ai"
@@ -17,18 +18,82 @@ import (
 )
 
 var (
-	cfg *Conf.Config
-	db  *sql.DB
+	cfg       *Conf.Config
+	db        *sql.DB
+	httpStats *HTTPStats
 )
 
-type LoggerHandler struct {
-	handler http.Handler
-	logger  *log.Logger
+type statusWriter struct {
+	http.ResponseWriter
+	status int
 }
 
-func (h *LoggerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (w *statusWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+type HTTPStats struct {
+	mu                sync.RWMutex
+	TotalRequests     int
+	RequestsByMethod  map[string]int
+	RequestsByPath    map[string]int
+	ResponseCodeCount map[int]int
+	TotalResponseTime time.Duration
+}
+
+func NewHTTPStats() *HTTPStats {
+	return &HTTPStats{
+		RequestsByMethod:  make(map[string]int),
+		RequestsByPath:    make(map[string]int),
+		ResponseCodeCount: make(map[int]int),
+	}
+}
+
+func (s *HTTPStats) Record(method, path string, statusCode int, duration time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.TotalRequests++
+	s.RequestsByMethod[method]++
+	s.RequestsByPath[path]++
+	s.ResponseCodeCount[statusCode]++
+	s.TotalResponseTime += duration
+}
+
+func (s *HTTPStats) GetSnapshot() map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	avgResponseTime := time.Duration(0)
+	if s.TotalRequests > 0 {
+		avgResponseTime = s.TotalResponseTime / time.Duration(s.TotalRequests)
+	}
+
+	return map[string]interface{}{
+		"TotalRequests":     s.TotalRequests,
+		"RequestsByMethod":  s.RequestsByMethod,
+		"RequestsByPath":    s.RequestsByPath,
+		"ResponseCodeCount": s.ResponseCodeCount,
+		"TotalResponseTime": s.TotalResponseTime.String(),
+		"AvgResponseTime":   avgResponseTime.String(),
+	}
+}
+
+type HttpHandler struct {
+	handler http.Handler
+	logger  *log.Logger
+	stats   *HTTPStats
+}
+
+func (h *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	h.logger.Printf("Received request: %s %s %s", r.Method, r.URL.Path, r.URL.RawQuery)
-	h.handler.ServeHTTP(w, r)
+
+	sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+	h.handler.ServeHTTP(sw, r)
+
+	duration := time.Since(start)
+	h.stats.Record(r.Method, r.URL.Path, sw.status, duration)
 }
 
 func main() {
@@ -43,7 +108,7 @@ func main() {
 
 	server := http.Server{
 		Addr:         cfg.Server.Port,
-		Handler:      &LoggerHandler{handler: http.DefaultServeMux, logger: logger},
+		Handler:      &HttpHandler{handler: http.DefaultServeMux, logger: logger, stats: httpStats},
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
@@ -52,19 +117,10 @@ func main() {
 	B.LogOut("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
 	B.LogOut("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
 	B.LogOut("Server listening on: " + cfg.Server.Port)
-
 	B.LogOut("Server: " + fmt.Sprintf("%#v", cfg.Server))
 	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
 	B.LogOut("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
-
 	B.LogOut("Db: " + fmt.Sprintf("%#v", cfg.Database))
-	B.LogOut("Db stats: " + fmt.Sprintf("%#v", db.Stats()))
-	// B.LogOut("Db stat max connections: " + strconv.Itoa(db.Stats().MaxOpenConnections))
-	// B.LogOut("Db stat open connections: " + strconv.Itoa(db.Stats().OpenConnections))
-	// B.LogOut("Db stat wait count: " + strconv.Itoa(int(db.Stats().WaitCount)))
-	// B.LogOut("Db stat wait duration: " + strconv.Itoa(int(db.Stats().WaitDuration.Milliseconds())) + " ms")
-	// B.LogOut("Db stat in use connections: " + strconv.Itoa(db.Stats().InUse))
-	// B.LogOut("Db stat idle connections: " + strconv.Itoa(db.Stats().Idle))
 
 	B.LogFatal(server.ListenAndServe())
 }
@@ -100,9 +156,11 @@ func init() {
 
 	B.LogOut("Server port: " + cfg.Server.Port)
 
+	httpStats = NewHTTPStats()
+
 	httpRouter := http.NewServeMux()
 
-	/// WEB FRONTEND
+	/// SERVER STATISTICS AT /
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
@@ -122,7 +180,8 @@ func init() {
 			"Sites":         fmt.Sprintf("%#v", cfg.Sites),
 			"Ollama":        fmt.Sprintf("%#v", cfg.Ollama),
 			"Db":            fmt.Sprintf("%#v", cfg.Database.Postgres),
-			"Db Stats":      db.Stats(),
+			"DbStats":       fmt.Sprintf("%#v", db.Stats()),
+			"HTTPStats":     httpStats.GetSnapshot(),
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
@@ -133,9 +192,7 @@ func init() {
 
 		B.LogOut("Request served: %s %s", r.Method, r.URL.Path)
 	})
-	http.Handle("/", httpRouter)
 
-	/// API
 	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
@@ -149,6 +206,7 @@ func init() {
 	httpRouter.HandleFunc("POST /translate", Ai.ExplainHandler(cfg.Ollama))
 	httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
 
+	http.Handle("/", httpRouter)
 	http.Handle("/auth", httpRouter)
 	http.Handle("/sites", httpRouter)
 	http.Handle("/archive", httpRouter)
