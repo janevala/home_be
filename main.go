@@ -57,12 +57,14 @@ func main() {
 	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
 	B.LogOut("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
 
-	B.LogOut("Database: " + fmt.Sprintf("%#v", cfg.Database))
-	B.LogOut("Database max connections: " + strconv.Itoa(db.Stats().MaxOpenConnections))
-	B.LogOut("Database open connections: " + strconv.Itoa(db.Stats().OpenConnections))
-	B.LogOut("Database wait count: " + strconv.Itoa(int(db.Stats().WaitCount)))
-	B.LogOut("Database in use connections: " + strconv.Itoa(db.Stats().InUse))
-	B.LogOut("Database idle connections: " + strconv.Itoa(db.Stats().Idle))
+	B.LogOut("Db: " + fmt.Sprintf("%#v", cfg.Database))
+	B.LogOut("Db stats: " + fmt.Sprintf("%#v", db.Stats()))
+	// B.LogOut("Db stat max connections: " + strconv.Itoa(db.Stats().MaxOpenConnections))
+	// B.LogOut("Db stat open connections: " + strconv.Itoa(db.Stats().OpenConnections))
+	// B.LogOut("Db stat wait count: " + strconv.Itoa(int(db.Stats().WaitCount)))
+	// B.LogOut("Db stat wait duration: " + strconv.Itoa(int(db.Stats().WaitDuration.Milliseconds())) + " ms")
+	// B.LogOut("Db stat in use connections: " + strconv.Itoa(db.Stats().InUse))
+	// B.LogOut("Db stat idle connections: " + strconv.Itoa(db.Stats().Idle))
 
 	B.LogFatal(server.ListenAndServe())
 }
@@ -117,9 +119,10 @@ func init() {
 			"NumGOMAXPROCS": runtime.GOMAXPROCS(0),
 			"NumCgoCall":    runtime.NumCgoCall(),
 			"Server":        fmt.Sprintf("%#v", cfg.Server),
-			"Database":      fmt.Sprintf("%#v", cfg.Database.Postgres),
 			"Sites":         fmt.Sprintf("%#v", cfg.Sites),
 			"Ollama":        fmt.Sprintf("%#v", cfg.Ollama),
+			"Db":            fmt.Sprintf("%#v", cfg.Database.Postgres),
+			"Db Stats":      db.Stats(),
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
