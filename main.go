@@ -19,10 +19,11 @@ import (
 )
 
 var (
-	version   string = "dev"
-	cfg       *Conf.Config
-	db        *sql.DB
-	httpStats *HTTPStats
+	startupTime time.Time = time.Now()
+	version     string    = "dev"
+	cfg         *Conf.Config
+	db          *sql.DB
+	httpStats   *HTTPStats
 )
 
 type statusWriter struct {
@@ -141,6 +142,7 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
+	B.LogOut("Startup time: " + startupTime.Format(time.RFC3339))
 	B.LogOut("Version: " + version)
 	B.LogOut("Go Version: " + runtime.Version())
 	B.LogOut("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
@@ -199,7 +201,9 @@ func init() {
 		}
 
 		data := map[string]interface{}{
-			"BuildTime":     time.Now().Format(time.RFC3339),
+			"StartupTime":   startupTime.Format(time.RFC3339),
+			"CurrentTime":   time.Now().Format(time.RFC3339),
+			"Uptime":        time.Since(startupTime).String(),
 			"GOOS":          runtime.GOOS,
 			"GOARCH":        runtime.GOARCH,
 			"Version":       version,
@@ -242,8 +246,9 @@ func init() {
 		statJson, _ := json.Marshal(statsStruct)
 		databaseStats := string(statJson)
 		httpdStats := httpStats.GetJsonSnapshot()
+		processUptime := time.Since(startupTime).String()
 
-		json := `{"os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + databaseStats + `, "http_stats": ` + httpdStats + `}`
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + databaseStats + `, "http_stats": ` + httpdStats + `}`
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
