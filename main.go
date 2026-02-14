@@ -170,6 +170,8 @@ func init() {
 		}
 
 		data := map[string]interface{}{
+			"GOOS":          runtime.GOOS,
+			"GOARCH":        runtime.GOARCH,
 			"BuildTime":     time.Now().Format(time.RFC3339),
 			"GoVersion":     runtime.Version(),
 			"NumCPU":        runtime.NumCPU(),
