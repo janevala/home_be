@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -77,6 +78,30 @@ func (s *HTTPStats) GetSnapshot() map[string]interface{} {
 		"TotalResponseTime": s.TotalResponseTime.String(),
 		"AvgResponseTime":   avgResponseTime.String(),
 	}
+}
+
+func (s *HTTPStats) GetJsonSnapshot() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	avgResponseTime := time.Duration(0)
+	if s.TotalRequests > 0 {
+		avgResponseTime = s.TotalResponseTime / time.Duration(s.TotalRequests)
+	}
+
+	jsonStruct := map[string]interface{}{
+		"TotalRequests":     s.TotalRequests,
+		"TotalResponseTime": s.TotalResponseTime.String(),
+		"AvgResponseTime":   avgResponseTime.String(),
+	}
+
+	jsonData, err := json.Marshal(jsonStruct)
+	if err != nil {
+		B.LogErr(err)
+		return "{}"
+	}
+
+	return string(jsonData)
 }
 
 type HttpHandler struct {
@@ -193,6 +218,14 @@ func init() {
 		}
 
 		B.LogOut("Request served: %s %s", r.Method, r.URL.Path)
+	})
+
+	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, r *http.Request) {
+		var dbStats string = "{}"
+		httpJson := httpStats.GetJsonSnapshot()
+		jsonData := `{"os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + dbStats + `, "http_stats": ` + httpJson + `}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(jsonData))
 	})
 
 	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
