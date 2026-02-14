@@ -1,9 +1,13 @@
 # Any args passed to the make script, use with $(call args, default_value)
 # args = `arg="$(filter-out $@,$(MAKECMDGOALS))" && echo $${arg:-${1}}`
 
-BINARY_NAME=home_be
-GOOS=linux
+BINARY_NAME := home_be
+GOOS := linux
 BUILDARCH ?= $(shell uname -m)
+PKG := gitlab.com/janevala/home_be
+VERSION := $(shell git describe --always --long --dirty)
+PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
+GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
 
 ifeq ($(BUILDARCH),aarch64)
 	BUILDARCH=arm64
@@ -12,6 +16,15 @@ ifeq ($(BUILDARCH),x86_64)
 	BUILDARCH=amd64
 endif
 
+# test:
+# 	@go test -short ${PKG_LIST}
+
+# vet:
+# 	@go vet ${PKG_LIST}
+# lint:
+# 	@for file in ${GO_FILES} ;  do \
+# 		golint $$file ; \
+# 	done
 dep:
 	go mod tidy && go mod vendor && go fmt
 
@@ -24,10 +37,10 @@ build: clean
 	go get github.com/rifaideen/talkative
 
 debug: build
-	GOARCH=${BUILDARCH} go build -tags debug -o ${BINARY_NAME}_${BUILDARCH} main.go
+	GOARCH=${BUILDARCH} go build -v -tags debug -o ${BINARY_NAME}_${BUILDARCH} -ldflags="-X main.version=${VERSION}" main.go
 
 release: build
-	GOARCH=${BUILDARCH} go build -tags release -o ${BINARY_NAME}_${BUILDARCH} main.go
+	GOARCH=${BUILDARCH} go build -v -tags release -o ${BINARY_NAME}_${BUILDARCH} -ldflags="-X main.version=${VERSION}" main.go
 
 run:
 	./${BINARY_NAME}_${BUILDARCH}
