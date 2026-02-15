@@ -17,10 +17,6 @@
 		"title": "RSS Feeds",
 		"sites": [
 			{
-				"title": "Phoronix",
-				"url": "https://www.phoronix.com/rss.php"
-			},
-			{
 				"title": "Slashdot",
 				"url": "https://rss.slashdot.org/Slashdot/slashdotMain"
 			},
