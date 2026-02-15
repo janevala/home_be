@@ -224,13 +224,28 @@ func init() {
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, r *http.Request) {
-		var dbStats string = "{}"
-		httpJson := httpStats.GetJsonSnapshot()
-		jsonData := `{"os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + dbStats + `, "http_stats": ` + httpJson + `}`
+		dbStats := db.Stats()
+		statsStruct := map[string]interface{}{
+			"MaxOpenConnections": dbStats.MaxOpenConnections,
+			"OpenConnections":    dbStats.OpenConnections,
+			"InUse":              dbStats.InUse,
+			"Idle":               dbStats.Idle,
+			"WaitCount":          dbStats.WaitCount,
+			"WaitDuration":       dbStats.WaitDuration.String(),
+			"MaxIdleClosed":      dbStats.MaxIdleClosed,
+			"MaxIdleTimeClosed":  dbStats.MaxIdleTimeClosed,
+			"MaxLifetimeClosed":  dbStats.MaxLifetimeClosed,
+		}
+
+		statJson, _ := json.Marshal(statsStruct)
+		databaseStats := string(statJson)
+		httpdStats := httpStats.GetJsonSnapshot()
+
+		json := `{"os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + databaseStats + `, "http_stats": ` + httpdStats + `}`
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(jsonData))
+		w.Write([]byte(json))
 	})
 
 	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
