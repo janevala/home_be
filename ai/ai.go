@@ -9,7 +9,6 @@ import (
 
 	B "github.com/janevala/home_be/build"
 	"github.com/janevala/home_be/config"
-	_ "github.com/lib/pq"
 	"github.com/rifaideen/talkative"
 )
 
