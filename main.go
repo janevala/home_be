@@ -93,6 +93,8 @@ func (s *HTTPStats) GetJsonSnapshot() string {
 	jsonStruct := map[string]interface{}{
 		"TotalRequests":     s.TotalRequests,
 		"TotalResponseTime": s.TotalResponseTime.String(),
+		"RequestsByMethod":  s.RequestsByMethod,
+		"ResponseCodeCount": s.ResponseCodeCount,
 		"AvgResponseTime":   avgResponseTime.String(),
 	}
 
