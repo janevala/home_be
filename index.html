@@ -3,34 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.BuildTime}}</title>
+    <title>Server Statistics</title>
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(4px);
+        }
+
+        .card h2 {
+            color: #667eea;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-badge.healthy {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.critical {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.8;
+        }
+
+        .uptime-value {
+            color: #28a745;
+            font-size: 1.2em;
+        }
+    </style>
 </head>
 <body>
-    <!-- <header>
-        <h3>{{.BuildTime}}</h3>
-    </header> -->
-    <main>
-        <div>
-            <p>OS: {{.GOOS}}</p>
-            <p>ARCH: {{.GOARCH}}</p>
-            <p>Version: {{.Version}}</p>
-            <p>GoVersion: {{.GoVersion}}</p>
-            <p>NumCPU: {{.NumCPU}}</p>
-            <p>NumGoroutine: {{.NumGoroutine}}</p>
-            <p>NumGOMAXPROCS: {{.NumGOMAXPROCS}}</p>
-            <p>NumCgoCall: {{.NumCgoCall}}</p>
-            <p>Server: {{.Server}}</p>
-            <p>Sites: {{.Sites}}</p>
-            <p>Ollama: {{.Ollama}}</p>
-            <p>Db: {{.Db}}</p>
-            <p>Db stats: {{.DbStats}}</p>
-            <p>Http stats: {{.HTTPStats}}</p>
+    <div class="container">
+        <header>
+            <h1>📊 Server Statistics</h1>
+            <p>Monitoring and performance metrics</p>
+        </header>
+
+        <script>
+            const stats = JSON.parse('{{.StatsJSON}}');
+            
+            function formatUptime(milliseconds) {
+                const totalSeconds = Math.floor(milliseconds / 1000);
+                const days = Math.floor(totalSeconds / 86400);
+                const hours = Math.floor((totalSeconds % 86400) / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                
+                if (days > 0) {
+                    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                } else if (hours > 0) {
+                    return `${hours}h ${minutes}m ${seconds}s`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ${seconds}s`;
+                } else {
+                    return `${seconds}s`;
+                }
+            }
+
+            function formatDuration(durationStr) {
+                return durationStr.replace('ms', ' ms').replace('µs', ' µs').replace('ns', ' ns');
+            }
+        </script>
+
+        <div class="grid">
+            <!-- System Info Card -->
+            <div class="card">
+                <h2>🖥️ System Information</h2>
+                <div class="stat-row">
+                    <span class="stat-label">OS</span>
+                    <span class="stat-value" id="os"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Architecture</span>
+                    <span class="stat-value" id="arch"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Version</span>
+                    <span class="stat-value" id="version"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Go Version</span>
+                    <span class="stat-value" id="go_version"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Uptime</span>
+                    <span class="stat-value uptime-value" id="uptime"></span>
+                </div>
+            </div>
+
+            <!-- Runtime Card -->
+            <div class="card">
+                <h2>⚙️ Runtime</h2>
+                <div class="stat-row">
+                    <span class="stat-label">CPU Cores</span>
+                    <span class="stat-value" id="cpu_cores"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Goroutines</span>
+                    <span class="stat-value" id="goroutines"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">GOMAXPROCS</span>
+                    <span class="stat-value" id="gomaxprocs"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">CGO Calls</span>
+                    <span class="stat-value" id="cgo_calls"></span>
+                </div>
+            </div>
+
+            <!-- HTTP Requests Card -->
+            <div class="card">
+                <h2>📡 HTTP Requests</h2>
+                <div class="stat-row">
+                    <span class="stat-label">Total Requests</span>
+                    <span class="stat-value" id="total_requests"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Avg Response Time</span>
+                    <span class="stat-value" id="avg_response_time"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Response Time</span>
+                    <span class="stat-value" id="total_response_time"></span>
+                </div>
+            </div>
         </div>
-    
-    </main>
-    <!-- <footer>
-        <p>BUILD TIME: {{.BuildTime}}</p>
-    </footer> -->
+
+        <!-- Two Column Layout for Charts -->
+        <div class="two-column">
+            <!-- Database Connections Card -->
+            <div class="card">
+                <h2>🗄️ Database Connections</h2>
+                <div class="stat-row">
+                    <span class="stat-label">Open Connections</span>
+                    <span class="stat-value" id="db_open"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">In Use</span>
+                    <span class="stat-value" id="db_inuse"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Idle</span>
+                    <span class="stat-value" id="db_idle"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Max Connections</span>
+                    <span class="stat-value" id="db_max"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Wait Count</span>
+                    <span class="stat-value" id="db_wait_count"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Wait Duration</span>
+                    <span class="stat-value" id="db_wait_duration"></span>
+                </div>
+            </div>
+
+            <!-- Request Methods Chart -->
+            <div class="card">
+                <h2>📊 Request Methods</h2>
+                <div class="chart-container">
+                    <canvas id="methodsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Response Codes Chart -->
+        <div class="card" style="margin-top: 30px; margin-bottom: 30px;">
+            <h2>📈 Response Status Codes</h2>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Last updated: <span id="update_time"></span></p>
+    </footer>
+
+    <script>
+        function updateStats() {
+            // System Info
+            document.getElementById('os').textContent = stats.os;
+            document.getElementById('arch').textContent = stats.arch;
+            document.getElementById('version').textContent = stats.version;
+            document.getElementById('go_version').textContent = stats.go_version;
+            document.getElementById('uptime').textContent = formatUptime(parseInt(stats.uptime));
+
+            // Runtime
+            document.getElementById('cpu_cores').textContent = stats.num_cpu;
+            document.getElementById('goroutines').textContent = stats.num_goroutine;
+            document.getElementById('gomaxprocs').textContent = stats.num_gomaxprocs;
+            document.getElementById('cgo_calls').textContent = stats.num_cgo_call;
+
+            // HTTP Stats
+            document.getElementById('total_requests').textContent = stats.http_stats.TotalRequests;
+            document.getElementById('avg_response_time').textContent = formatDuration(stats.http_stats.AvgResponseTime);
+            document.getElementById('total_response_time').textContent = formatDuration(stats.http_stats.TotalResponseTime);
+
+            // Database Stats
+            const dbStats = stats.db_stats;
+            document.getElementById('db_open').textContent = dbStats.OpenConnections;
+            document.getElementById('db_inuse').textContent = dbStats.InUse;
+            document.getElementById('db_idle').textContent = dbStats.Idle;
+            document.getElementById('db_max').textContent = dbStats.MaxOpenConnections;
+            document.getElementById('db_wait_count').textContent = dbStats.WaitCount;
+            document.getElementById('db_wait_duration').textContent = dbStats.WaitDuration;
+
+            // Update timestamp
+            const now = new Date();
+            document.getElementById('update_time').textContent = now.toLocaleTimeString();
+
+            // Update charts
+            updateCharts();
+        }
+
+        let methodsChart = null;
+        let statusChart = null;
+
+        function updateCharts() {
+            const methodCtx = document.getElementById('methodsChart');
+            const statusCtx = document.getElementById('statusChart');
+
+            // Request Methods Chart
+            const methods = Object.keys(stats.http_stats.RequestsByMethod || {});
+            const methodCounts = Object.values(stats.http_stats.RequestsByMethod || {});
+
+            if (methodsChart) {
+                methodsChart.data.labels = methods;
+                methodsChart.data.datasets[0].data = methodCounts;
+                methodsChart.update();
+            } else {
+                methodsChart = new Chart(methodCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: methods,
+                        datasets: [{
+                            label: 'Requests',
+                            data: methodCounts,
+                            backgroundColor: [
+                                '#667eea',
+                                '#764ba2',
+                                '#f093fb',
+                                '#4facfe',
+                                '#00f2fe'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Response Status Codes Chart
+            const statusCodes = Object.keys(stats.http_stats.ResponseCodeCount || {});
+            const statusCounts = Object.values(stats.http_stats.ResponseCodeCount || {});
+
+            const colors = statusCodes.map(code => {
+                code = parseInt(code);
+                if (code >= 200 && code < 300) return '#28a745';
+                if (code >= 300 && code < 400) return '#17a2b8';
+                if (code >= 400 && code < 500) return '#ffc107';
+                if (code >= 500) return '#dc3545';
+                return '#6c757d';
+            });
+
+            if (statusChart) {
+                statusChart.data.labels = statusCodes;
+                statusChart.data.datasets[0].data = statusCounts;
+                statusChart.data.datasets[0].backgroundColor = colors;
+                statusChart.update();
+            } else {
+                statusChart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: statusCodes.map(code => `HTTP ${code}`),
+                        datasets: [{
+                            data: statusCounts,
+                            backgroundColor: colors
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        updateStats();
+    </script>
 </body>
 </html>

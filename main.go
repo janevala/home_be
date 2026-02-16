@@ -156,6 +156,25 @@ func main() {
 	B.LogFatal(server.ListenAndServe())
 }
 
+func dbStatsToJson(db *sql.DB) string {
+	dbStats := db.Stats()
+	statsStruct := map[string]interface{}{
+		"MaxOpenConnections": dbStats.MaxOpenConnections,
+		"OpenConnections":    dbStats.OpenConnections,
+		"InUse":              dbStats.InUse,
+		"Idle":               dbStats.Idle,
+		"WaitCount":          dbStats.WaitCount,
+		"WaitDuration":       dbStats.WaitDuration.String(),
+		"MaxIdleClosed":      dbStats.MaxIdleClosed,
+		"MaxIdleTimeClosed":  dbStats.MaxIdleTimeClosed,
+		"MaxLifetimeClosed":  dbStats.MaxLifetimeClosed,
+	}
+
+	statJson, _ := json.Marshal(statsStruct)
+	databaseStats := string(statJson)
+	return databaseStats
+}
+
 func init() {
 	var err error
 	cfg, err = Conf.LoadConfig("config.json")
@@ -191,7 +210,6 @@ func init() {
 
 	httpRouter := http.NewServeMux()
 
-	/// SERVER STATISTICS AT /
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
@@ -200,24 +218,13 @@ func init() {
 			return
 		}
 
+		startupMilliseconds := time.Since(startupTime).Milliseconds()
+		processUptime := strconv.FormatInt(startupMilliseconds, 10)
+
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
+
 		data := map[string]interface{}{
-			"StartupTime":   startupTime.Format(time.RFC3339),
-			"CurrentTime":   time.Now().Format(time.RFC3339),
-			"Uptime":        time.Since(startupTime).String(),
-			"GOOS":          runtime.GOOS,
-			"GOARCH":        runtime.GOARCH,
-			"Version":       version,
-			"GoVersion":     runtime.Version(),
-			"NumCPU":        runtime.NumCPU(),
-			"NumGoroutine":  runtime.NumGoroutine(),
-			"NumGOMAXPROCS": runtime.GOMAXPROCS(0),
-			"NumCgoCall":    runtime.NumCgoCall(),
-			"Server":        fmt.Sprintf("%#v", cfg.Server),
-			"Sites":         fmt.Sprintf("%#v", cfg.Sites),
-			"Ollama":        fmt.Sprintf("%#v", cfg.Ollama),
-			"Db":            fmt.Sprintf("%#v", cfg.Database.Postgres),
-			"DbStats":       fmt.Sprintf("%#v", db.Stats()),
-			"HTTPStats":     httpStats.GetSnapshot(),
+			"StatsJSON": json,
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
@@ -230,25 +237,10 @@ func init() {
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, r *http.Request) {
-		dbStats := db.Stats()
-		statsStruct := map[string]interface{}{
-			"MaxOpenConnections": dbStats.MaxOpenConnections,
-			"OpenConnections":    dbStats.OpenConnections,
-			"InUse":              dbStats.InUse,
-			"Idle":               dbStats.Idle,
-			"WaitCount":          dbStats.WaitCount,
-			"WaitDuration":       dbStats.WaitDuration.String(),
-			"MaxIdleClosed":      dbStats.MaxIdleClosed,
-			"MaxIdleTimeClosed":  dbStats.MaxIdleTimeClosed,
-			"MaxLifetimeClosed":  dbStats.MaxLifetimeClosed,
-		}
+		startupMilliseconds := time.Since(startupTime).Milliseconds()
+		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
-		statJson, _ := json.Marshal(statsStruct)
-		databaseStats := string(statJson)
-		httpdStats := httpStats.GetJsonSnapshot()
-		processUptime := time.Since(startupTime).String()
-
-		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + databaseStats + `, "http_stats": ` + httpdStats + `}`
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
