@@ -90,13 +90,14 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 			offset := 0
 
 			if l := query.Get("limit"); l != "" {
-				if l, err := strconv.Atoi(l); err == nil && l > 0 {
+				if l, err := strconv.Atoi(l); err == nil && l > 0 && l < 1000 {
 					limit = l
 				}
 			}
 
 			if o := query.Get("offset"); o != "" {
-				if o, err := strconv.Atoi(o); err == nil && o >= 0 {
+				if o, err := strconv.Atoi(o); err == nil && o >= 0 && o < 1000000 {
+					// if we have over million news items, thats a positive problem
 					offset = o
 				}
 			}
@@ -359,6 +360,14 @@ func ellipticalTruncate(text string, maxLen int) string {
 	return text
 }
 
+func stringLength(str string) int {
+   var length int
+   for range str {
+      length++
+   }
+   return length
+}
+
 func SearchHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -369,9 +378,9 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 
 			searchQuery := query.Get("q")
 
-			if searchQuery == "" {
-				B.LogOut("Search query cannot be empty")
-				http.Error(w, "Search query cannot be empty", http.StatusBadRequest)
+			if searchQuery == "" || stringLength(searchQuery) > 20 {
+				B.LogOut("Search query invalid")
+				http.Error(w, "Search query invalid", http.StatusBadRequest)
 				return
 			}
 
