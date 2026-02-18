@@ -3,10 +3,10 @@
 		"port": ":7071",
 		"readTimeout": 30,
 		"writeTimeout": 30,
-		"environment": "development"
+		"environment": "release"
 	},
 	"database": {
-		"postgres": "postgres://postgres:1234@192.168.1.100:5432/homebedb?sslmode=disable"
+		"postgres": "postgres://postgres:super100@103.76.182.17:5432/homebedb?sslmode=disable"
 	},
 	"ollama": {
 		"host": "192.168.1.160",
@@ -14,7 +14,7 @@
 		"model": "translategemma:latest"
 	},
 	"sites": {
-		"title": "RSS Feeds",
+		"title": "News Feeds",
 		"sites": [
 			{
 				"title": "Slashdot",
