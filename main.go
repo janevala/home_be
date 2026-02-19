@@ -127,6 +127,25 @@ func (h *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.stats.Record(r.Method, r.URL.Path, sw.status, duration)
 }
 
+func dbStatsToJson(db *sql.DB) string {
+	dbStats := db.Stats()
+	statsStruct := map[string]interface{}{
+		"MaxOpenConnections": dbStats.MaxOpenConnections,
+		"OpenConnections":    dbStats.OpenConnections,
+		"InUse":              dbStats.InUse,
+		"Idle":               dbStats.Idle,
+		"WaitCount":          dbStats.WaitCount,
+		"WaitDuration":       dbStats.WaitDuration.String(),
+		"MaxIdleClosed":      dbStats.MaxIdleClosed,
+		"MaxIdleTimeClosed":  dbStats.MaxIdleTimeClosed,
+		"MaxLifetimeClosed":  dbStats.MaxLifetimeClosed,
+	}
+
+	statJson, _ := json.Marshal(statsStruct)
+	databaseStats := string(statJson)
+	return databaseStats
+}
+
 func main() {
 	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
 	B.SetLogger(logger)
@@ -155,28 +174,8 @@ func main() {
 	B.LogOut("Server: " + fmt.Sprintf("%#v", cfg.Server))
 	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
 	B.LogOut("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
-	B.LogOut("Db: " + fmt.Sprintf("%#v", cfg.Database))
 
 	B.LogFatal(server.ListenAndServe())
-}
-
-func dbStatsToJson(db *sql.DB) string {
-	dbStats := db.Stats()
-	statsStruct := map[string]interface{}{
-		"MaxOpenConnections": dbStats.MaxOpenConnections,
-		"OpenConnections":    dbStats.OpenConnections,
-		"InUse":              dbStats.InUse,
-		"Idle":               dbStats.Idle,
-		"WaitCount":          dbStats.WaitCount,
-		"WaitDuration":       dbStats.WaitDuration.String(),
-		"MaxIdleClosed":      dbStats.MaxIdleClosed,
-		"MaxIdleTimeClosed":  dbStats.MaxIdleTimeClosed,
-		"MaxLifetimeClosed":  dbStats.MaxLifetimeClosed,
-	}
-
-	statJson, _ := json.Marshal(statsStruct)
-	databaseStats := string(statJson)
-	return databaseStats
 }
 
 func init() {

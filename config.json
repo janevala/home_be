@@ -2,11 +2,7 @@
 	"server": {
 		"port": ":7071",
 		"readTimeout": 30,
-		"writeTimeout": 30,
-		"environment": "release"
-	},
-	"database": {
-		"postgres": "postgres://postgres:super100@103.76.182.17:5432/homebedb?sslmode=disable"
+		"writeTimeout": 30
 	},
 	"ollama": {
 		"host": "192.168.1.160",

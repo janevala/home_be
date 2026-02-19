@@ -2,21 +2,15 @@
 package config
 
 type Config struct {
-	Server   ServerConfig
-	Database Database
-	Ollama   Ollama
-	Sites    SitesConfig
+	Server ServerConfig
+	Ollama Ollama
+	Sites  SitesConfig
 }
 
 type ServerConfig struct {
 	Port         string
 	ReadTimeout  int
 	WriteTimeout int
-	Environment  string // "development", "production"
-}
-
-type Database struct {
-	Postgres string `json:"postgres"`
 }
 
 type Ollama struct {
