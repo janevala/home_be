@@ -16,7 +16,7 @@ type ServerConfig struct {
 type Ollama struct {
 	Host  string
 	Port  string
-	Model string // "mistral:7b", "qwen2.5-coder:14b"
+	Model string
 }
 
 type SitesConfig struct {

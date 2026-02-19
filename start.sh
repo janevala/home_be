@@ -13,7 +13,7 @@ if [ "$ARC" = "aarch64" ]; then
         /usr/bin/make clean
         /usr/bin/make ${ENV}
         /usr/bin/make dep
-        /usr/bin/make run
+        ./home_be_arm64
     else
         ./home_be_arm64
     fi
@@ -24,7 +24,7 @@ if [ "$ARC" = "x86_64" ]; then
         /usr/bin/make clean
         /usr/bin/make ${ENV}
         /usr/bin/make dep
-        /usr/bin/make run
+        ./home_be_amd64
     else
         ./home_be_amd64
     fi
