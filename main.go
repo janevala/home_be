@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	Api "github.com/janevala/home_be/api"
 	B "github.com/janevala/home_be/build"
 	Conf "github.com/janevala/home_be/config"
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -126,14 +128,16 @@ func (h *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
+	B.SetLogger(logger)
+
+	B.LogOut("In main()...")
+
 	if cfg == nil {
 		B.LogFatal("Config is nil")
 	}
 
 	defer db.Close()
-
-	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
-	B.SetLogger(logger)
 
 	server := http.Server{
 		Addr:         cfg.Server.Port,
@@ -176,35 +180,42 @@ func dbStatsToJson(db *sql.DB) string {
 }
 
 func init() {
+	// TODO: logger is not set yet, check main
+	fmt.Println("In init()...")
 	var err error
 	cfg, err = Conf.LoadConfig("config.json")
 	if err != nil {
-		B.LogFatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
-	db, err = sql.Open("postgres", cfg.Database.Postgres)
+	if B.IsProduction() {
+		err = godotenv.Load(".env")
+	} else {
+		err = godotenv.Load(".env.example")
+	}
 
 	if err != nil {
-		if B.IsProduction() {
-			B.LogFatal(err)
-		} else {
-			B.LogErr(err)
-		}
+		fmt.Println("No .env file found")
+		os.Exit(1)
 	}
 
+	databaseUrl := os.Getenv("DATABASE_URL")
+	db, err = sql.Open("postgres", databaseUrl)
+
+	fmt.Println("Testing database...")
 	if err = db.Ping(); err != nil {
-		if B.IsProduction() {
-			B.LogFatal(err)
-		} else {
-			B.LogErr(err)
-		}
+		// TODO: if host exists, but is unavail, this ping starts waiting forever
+		fmt.Println(err)
+		os.Exit(1)
 	}
-	db.SetMaxOpenConns(50)
-	db.SetMaxIdleConns(25)
+
+	db.SetMaxOpenConns(30)
+	db.SetMaxIdleConns(20)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(5 * time.Minute)
 
-	B.LogOut("Server port: " + cfg.Server.Port)
+	fmt.Println("Server port: " + cfg.Server.Port)
 
 	httpStats = NewHTTPStats()
 
@@ -213,7 +224,7 @@ func init() {
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
-			B.LogErr(err)
+			fmt.Println(err)
 			http.Error(w, "Could not load template", http.StatusInternalServerError)
 			return
 		}
@@ -228,12 +239,12 @@ func init() {
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
-			B.LogErr(err)
+			fmt.Println(err)
 			http.Error(w, "Could not execute template", http.StatusInternalServerError)
 			return
 		}
 
-		B.LogOut("Request served: %s %s", r.Method, r.URL.Path)
+		fmt.Printf("Request served: %s %s\n", r.Method, r.URL.Path)
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, r *http.Request) {

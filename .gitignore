@@ -22,3 +22,4 @@ go.work
 go.mod
 go.sum
 __debug_*
+.env

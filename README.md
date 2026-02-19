@@ -16,7 +16,14 @@ Separate Home BE Crawler is running as a different microservice, and crawls RSS 
 
 AI integration to Ollama local AI instance is integrated through Talkative plugin for Golang.
 
-Go build tags used: debug, release
+# Environments & Go build tags & make targets
+- release
+- debug
+
+# Startup scenarios, need to handle debug vs release tag
+- Makefile
+- Dockerfile & start.sh
+- VSCode launch.json
 
 # API Endpoints
 

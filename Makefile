@@ -49,6 +49,7 @@ build: clean
 	go get github.com/google/uuid
 	go get github.com/lib/pq
 	go get github.com/rifaideen/talkative
+	go get github.com/joho/godotenv
 
 debug: build
 	GOARCH=${BUILDARCH} go build -v -tags debug -o ${BINARY_NAME}_${BUILDARCH} -ldflags="-X main.version=${VERSION}" main.go
