@@ -84,32 +84,6 @@ func (s *HTTPStats) GetSnapshot() map[string]interface{} {
 	}
 }
 
-func (s *HTTPStats) GetJsonSnapshot() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	avgResponseTime := time.Duration(0)
-	if s.TotalRequests > 0 {
-		avgResponseTime = s.TotalResponseTime / time.Duration(s.TotalRequests)
-	}
-
-	jsonStruct := map[string]interface{}{
-		"TotalRequests":     s.TotalRequests,
-		"TotalResponseTime": s.TotalResponseTime.String(),
-		"RequestsByMethod":  s.RequestsByMethod,
-		"ResponseCodeCount": s.ResponseCodeCount,
-		"AvgResponseTime":   avgResponseTime.String(),
-	}
-
-	jsonData, err := json.Marshal(jsonStruct)
-	if err != nil {
-		B.LogErr(err)
-		return "{}"
-	}
-
-	return string(jsonData)
-}
-
 type HttpHandler struct {
 	handler http.Handler
 	logger  *log.Logger
