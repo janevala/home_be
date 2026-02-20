@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 if [ ! -f ".env" ]; then
     echo "Error: .env file not found"
