@@ -36,7 +36,7 @@ help:
 # 	done
 
 dep:
-	go mod tidy && go mod vendor && go fmt
+	go mod vendor && go fmt
 
 vet: clean
 	go mod init github.com/janevala/home_be

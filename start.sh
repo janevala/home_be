@@ -10,7 +10,6 @@ ARC=$(uname -m)
 
 if [ "$ARC" = "aarch64" ]; then
     if [ ! -f "home_be_arm64" ]; then
-        /usr/bin/make clean
         /usr/bin/make ${ENV}
         /usr/bin/make dep
         ./home_be_arm64
@@ -21,7 +20,6 @@ fi
 
 if [ "$ARC" = "x86_64" ]; then
     if [ ! -f "home_be_amd64" ]; then
-        /usr/bin/make clean
         /usr/bin/make ${ENV}
         /usr/bin/make dep
         ./home_be_amd64
