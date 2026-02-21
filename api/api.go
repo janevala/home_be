@@ -54,7 +54,7 @@ func HandleMethodOptions(w http.ResponseWriter, req *http.Request, allowedMethod
 	w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
@@ -361,11 +361,11 @@ func ellipticalTruncate(text string, maxLen int) string {
 }
 
 func stringLength(str string) int {
-   var length int
-   for range str {
-      length++
-   }
-   return length
+	var length int
+	for range str {
+		length++
+	}
+	return length
 }
 
 func SearchHandler(db *sql.DB) http.HandlerFunc {

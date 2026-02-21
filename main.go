@@ -237,6 +237,10 @@ func init() {
 		w.Write([]byte(json))
 	})
 
+	httpRouter.HandleFunc("OPTIONS /jq", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
