@@ -228,8 +228,6 @@ func init() {
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w, r)
-
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
@@ -259,6 +257,7 @@ func init() {
 	http.Handle("/search", httpRouter)
 	http.Handle("/refresh", httpRouter)
 	http.Handle("/translate", httpRouter)
+	http.Handle("/jq", corsMiddleware(httpRouter))
 }
 
 func enableCORS(w http.ResponseWriter, r *http.Request) {
@@ -270,4 +269,11 @@ func enableCORS(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w, r)
+		next.ServeHTTP(w, r)
+	})
 }
