@@ -201,7 +201,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 						return
 					}
 
-					if now.Sub(lastCreated) > 4*time.Hour {
+					if now.Sub(lastCreated) > 3*time.Hour {
 						B.LogOut("Starting archive refresh...")
 						B.LogOut("Last refresh was at: " + lastCreated.String())
 						B.LogOut("Current time is: " + now.String())
@@ -214,18 +214,34 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 							defer B.LogOut("Crawling completed")
 
 							crawl(sites, db)
+
+							var records int
+							err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
+							if err != nil {
+								B.LogErr(err)
+								http.Error(w, "Database scan error", http.StatusInternalServerError)
+								return
+							}
+
+							w.Header().Set("Access-Control-Allow-Origin", "*")
+							w.WriteHeader(http.StatusOK)
+							w.Write([]byte("Archive refresh completed with " + strconv.Itoa(records) + " records"))
 						}()
 
 						wg.Wait()
-
-						w.Header().Set("Access-Control-Allow-Origin", "*")
-						w.WriteHeader(http.StatusOK)
-						w.Write([]byte("Archive refresh started"))
 					} else {
+						var records int
+						err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
+						if err != nil {
+							B.LogErr(err)
+							http.Error(w, "Database scan error", http.StatusInternalServerError)
+							return
+						}
+
 						B.LogOut("News archive up to date")
 						w.Header().Set("Access-Control-Allow-Origin", "*")
 						w.WriteHeader(http.StatusOK)
-						w.Write([]byte("Archive up to date"))
+						w.Write([]byte("Archive up to date with " + strconv.Itoa(records) + " records"))
 					}
 				}
 			}
