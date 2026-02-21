@@ -228,12 +228,13 @@ func init() {
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, r *http.Request) {
+		enableCORS(w, r)
+
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
 		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(json))
 	})
@@ -258,4 +259,15 @@ func init() {
 	http.Handle("/search", httpRouter)
 	http.Handle("/refresh", httpRouter)
 	http.Handle("/translate", httpRouter)
+}
+
+func enableCORS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 }
