@@ -202,7 +202,7 @@ func init() {
 
 	httpRouter := http.NewServeMux()
 
-	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+	httpRouter.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		tmpl, err := template.ParseFiles("index.html")
 		if err != nil {
 			fmt.Println(err)
@@ -225,10 +225,14 @@ func init() {
 			return
 		}
 
-		fmt.Printf("Request served: %s %s\n", r.Method, r.URL.Path)
+		fmt.Printf("Request served: %s %s\n", req.Method, req.URL.Path)
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
 		if !strings.Contains(req.URL.RawQuery, "code=123") {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Invalid"))
@@ -244,7 +248,11 @@ func init() {
 		w.Write([]byte(json))
 	})
 
-	httpRouter.HandleFunc("OPTIONS /jq", func(w http.ResponseWriter, r *http.Request) {
+	httpRouter.HandleFunc("OPTIONS /jq", func(w http.ResponseWriter, req *http.Request) {
+		fmt.Println("OPTIONS request received")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.WriteHeader(http.StatusNoContent)
 	})
 
@@ -261,30 +269,26 @@ func init() {
 	httpRouter.HandleFunc("POST /translate", Ai.ExplainHandler(cfg.Ollama))
 	httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
 
-	http.Handle("/", httpRouter)
-	http.Handle("/auth", httpRouter)
-	http.Handle("/sites", httpRouter)
-	http.Handle("/archive", httpRouter)
-	http.Handle("/search", httpRouter)
-	http.Handle("/refresh", httpRouter)
-	http.Handle("/translate", httpRouter)
-	http.Handle("/jq", corsMiddleware(httpRouter))
-}
-
-func enableCORS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
+	corsRouter := corsMiddleware(httpRouter)
+	http.Handle("/auth", corsRouter)
+	http.Handle("/sites", corsRouter)
+	http.Handle("/archive", corsRouter)
+	http.Handle("/search", corsRouter)
+	http.Handle("/refresh", corsRouter)
+	http.Handle("/translate", corsRouter)
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w, r)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
