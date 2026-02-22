@@ -64,9 +64,8 @@ func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
-				B.LogOut("Invalid URI")
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("Invalid URI"))
+				w.Write([]byte("Invalid"))
 				return
 			}
 
@@ -84,6 +83,12 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 		case http.MethodOptions:
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
+			if !strings.Contains(req.URL.RawQuery, "code=123") {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid"))
+				return
+			}
+
 			query := req.URL.Query()
 
 			limit := 10
@@ -179,6 +184,12 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 		case http.MethodOptions:
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
+			if !strings.Contains(req.URL.RawQuery, "code=123") {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid"))
+				return
+			}
+
 			row, err := db.Query("SELECT created FROM feed_items ORDER BY created DESC LIMIT 1")
 
 			if err != nil {
@@ -390,6 +401,12 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 		case http.MethodOptions:
 			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
+			if !strings.Contains(req.URL.RawQuery, "code=123") {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid"))
+				return
+			}
+
 			query := req.URL.Query()
 
 			searchQuery := query.Get("q")

@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -227,7 +228,13 @@ func init() {
 		fmt.Printf("Request served: %s %s\n", r.Method, r.URL.Path)
 	})
 
-	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, r *http.Request) {
+	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, req *http.Request) {
+		if !strings.Contains(req.URL.RawQuery, "code=123") {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid"))
+			return
+		}
+
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
