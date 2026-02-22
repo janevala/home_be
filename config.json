@@ -13,10 +13,6 @@
 		"title": "News Feeds",
 		"sites": [
 			{
-				"title": "Slashdot",
-				"url": "https://rss.slashdot.org/Slashdot/slashdotMain"
-			},
-			{
 				"title": "Tom's Hardware",
 				"url": "https://www.tomshardware.com/feeds/all"
 			},
@@ -35,6 +31,22 @@
 			{
 				"title": "Hacker News",
 				"url": "https://news.ycombinator.com/rss"
+			},
+			{
+				"title": "Slashdot",
+				"url": "https://rss.slashdot.org/Slashdot/slashdotMain"
+			},
+			{
+				"title": "The Register",
+				"url": "https://www.theregister.com/software/headlines.atom"
+			},
+			{
+				"title": "The Verge",
+				"url": "https://www.theverge.com/rss/index.xml"
+			},
+			{
+				"title": "Wired",
+				"url": "https://www.wired.com/feed/tag/ai/latest/rss"
 			}
 		]
 	}

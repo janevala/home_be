@@ -212,7 +212,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 						return
 					}
 
-					if now.Sub(lastCreated) > 3*time.Hour {
+					if now.Sub(lastCreated) > 1*time.Hour {
 						B.LogOut("Starting archive refresh...")
 						B.LogOut("Last refresh was at: " + lastCreated.String())
 						B.LogOut("Current time is: " + now.String())
