@@ -144,7 +144,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>📊 Server Statistics</h1>
+            <h1>📊 Data Center</h1>
             <p>Monitoring and performance metrics</p>
         </header>
 
@@ -237,8 +237,29 @@
                     <span class="stat-value" id="gomaxprocs"></span>
                 </div>
                 <div class="stat-row">
-                    <span class="stat-label">CGO Calls</span>
+                    <span class="stat-label">NumCgoCall</span>
                     <span class="stat-value" id="cgo_calls"></span>
+                </div>
+            </div>
+
+            <!-- Memory Stats Card -->
+            <div class="card">
+                <h2>💾 Runtime Memory</h2>
+                <div class="stat-row">
+                    <span class="stat-label">Alloc</span>
+                    <span class="stat-value" id="mem_alloc"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">TotalAlloc</span>
+                    <span class="stat-value" id="mem_total_alloc"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Sys</span>
+                    <span class="stat-value" id="mem_sys"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">NumGC</span>
+                    <span class="stat-value" id="mem_num_gc"></span>
                 </div>
             </div>
 
@@ -259,30 +280,6 @@
                 </div>
             </div>
 
-            <!-- Memory Stats Card -->
-            <div class="card">
-                <h2>💾 Memory</h2>
-                <div class="stat-row">
-                    <span class="stat-label">Allocated</span>
-                    <span class="stat-value" id="mem_alloc"></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Total Allocated</span>
-                    <span class="stat-value" id="mem_total_alloc"></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">System Memory</span>
-                    <span class="stat-value" id="mem_sys"></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">GC Count</span>
-                    <span class="stat-value" id="mem_num_gc"></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Total GC Pause</span>
-                    <span class="stat-value" id="mem_pause_total"></span>
-                </div>
-            </div>
         </div>
 
         <!-- Two Column Layout for Charts -->
