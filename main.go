@@ -268,23 +268,4 @@ func init() {
 	http.Handle("/search", httpRouter)
 	http.Handle("/refresh", httpRouter)
 	http.Handle("/translate", httpRouter)
-	http.Handle("/jq", corsMiddleware(httpRouter))
-}
-
-func enableCORS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-}
-
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		enableCORS(w, r)
-		next.ServeHTTP(w, r)
-	})
 }
