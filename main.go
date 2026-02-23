@@ -259,10 +259,6 @@ func init() {
 		w.Write([]byte(json))
 	})
 
-	httpRouter.HandleFunc("OPTIONS /jq", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-
 	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
@@ -277,10 +273,26 @@ func init() {
 	httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
 
 	http.Handle("/", httpRouter)
+	http.Handle("/jq", corsMiddleware(httpRouter))
 	http.Handle("/auth", httpRouter)
 	http.Handle("/sites", httpRouter)
 	http.Handle("/archive", httpRouter)
 	http.Handle("/search", httpRouter)
 	http.Handle("/refresh", httpRouter)
 	http.Handle("/translate", httpRouter)
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
