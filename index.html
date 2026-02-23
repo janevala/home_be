@@ -172,6 +172,27 @@
             function formatDuration(durationStr) {
                 return durationStr.replace('ms', ' ms').replace('µs', ' µs').replace('ns', ' ns');
             }
+
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function formatNanos(nanos) {
+                if (nanos === 0) return '0 ns';
+                const k = 1000;
+                const sizes = ['ns', 'µs', 'ms', 's'];
+                let value = nanos;
+                let i = 0;
+                while (value >= k && i < sizes.length - 1) {
+                    value /= k;
+                    i++;
+                }
+                return parseFloat(value.toFixed(2)) + ' ' + sizes[i];
+            }
         </script>
 
         <div class="grid">
@@ -235,6 +256,31 @@
                 <div class="stat-row">
                     <span class="stat-label">Total Response Time</span>
                     <span class="stat-value" id="total_response_time"></span>
+                </div>
+            </div>
+
+            <!-- Memory Stats Card -->
+            <div class="card">
+                <h2>💾 Memory</h2>
+                <div class="stat-row">
+                    <span class="stat-label">Allocated</span>
+                    <span class="stat-value" id="mem_alloc"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Allocated</span>
+                    <span class="stat-value" id="mem_total_alloc"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">System Memory</span>
+                    <span class="stat-value" id="mem_sys"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">GC Count</span>
+                    <span class="stat-value" id="mem_num_gc"></span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total GC Pause</span>
+                    <span class="stat-value" id="mem_pause_total"></span>
                 </div>
             </div>
         </div>
@@ -320,6 +366,14 @@
             document.getElementById('db_max').textContent = dbStats.MaxOpenConnections;
             document.getElementById('db_wait_count').textContent = dbStats.WaitCount;
             document.getElementById('db_wait_duration').textContent = dbStats.WaitDuration;
+
+            // Memory Stats
+            const memStats = stats.memory_stats;
+            document.getElementById('mem_alloc').textContent = formatBytes(memStats.Alloc);
+            document.getElementById('mem_total_alloc').textContent = formatBytes(memStats.TotalAlloc);
+            document.getElementById('mem_sys').textContent = formatBytes(memStats.Sys);
+            document.getElementById('mem_num_gc').textContent = memStats.NumGC;
+            document.getElementById('mem_pause_total').textContent = formatNanos(memStats.PauseTotalNs);
 
             // Update timestamp
             const now = new Date();

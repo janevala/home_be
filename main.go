@@ -128,6 +128,23 @@ func dbStatsToJson(db *sql.DB) string {
 	return databaseStats
 }
 
+func memoryStatsToJson() string {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	memStats := map[string]interface{}{
+		"Alloc":        m.Alloc,
+		"TotalAlloc":   m.TotalAlloc,
+		"Sys":          m.Sys,
+		"NumGC":        m.NumGC,
+		"PauseTotalNs": m.PauseTotalNs,
+		"PauseNs":      m.PauseNs,
+		"PauseEnd":     m.PauseEnd,
+		"BySize":       m.BySize,
+	}
+	memStatsJson, _ := json.Marshal(memStats)
+	return string(memStatsJson)
+}
+
 func main() {
 	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
 	B.SetLogger(logger)
@@ -150,8 +167,6 @@ func main() {
 	B.LogOut("Startup time: " + startupTime.Format(time.RFC3339))
 	B.LogOut("Version: " + version)
 	B.LogOut("Go Version: " + runtime.Version())
-	B.LogOut("Number of CPUs: " + strconv.Itoa(runtime.NumCPU()))
-	B.LogOut("Number of Goroutines: " + strconv.Itoa(runtime.NumGoroutine()))
 	B.LogOut("Server listening on: " + cfg.Server.Port)
 	B.LogOut("Server: " + fmt.Sprintf("%#v", cfg.Server))
 	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
@@ -213,7 +228,7 @@ func init() {
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
-		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
 
 		data := map[string]interface{}{
 			"StatsJSON": json,
@@ -238,7 +253,7 @@ func init() {
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
-		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(json))
