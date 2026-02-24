@@ -51,18 +51,9 @@ type NewsItems struct {
 	Offset     int        `json:"offset"`
 }
 
-func HandleMethodOptions(w http.ResponseWriter, req *http.Request, allowedMethods string) {
-	w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.WriteHeader(http.StatusNoContent)
-}
-
 func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
-		case http.MethodOptions:
-			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				w.WriteHeader(http.StatusBadRequest)
@@ -81,8 +72,6 @@ func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
-		case http.MethodOptions:
-			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				w.WriteHeader(http.StatusBadRequest)
@@ -182,8 +171,6 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
-		case http.MethodOptions:
-			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				w.WriteHeader(http.StatusBadRequest)
@@ -400,8 +387,6 @@ func stringLength(str string) int {
 func SearchHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
-		case http.MethodOptions:
-			HandleMethodOptions(w, req, "GET, OPTIONS")
 		case http.MethodGet:
 			if !strings.Contains(req.URL.RawQuery, "code=123") {
 				w.WriteHeader(http.StatusBadRequest)
@@ -485,8 +470,6 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 func FakeAuthHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
-		case http.MethodOptions:
-			HandleMethodOptions(w, req, "POST, OPTIONS")
 		case http.MethodPost:
 			var bodyBytes []byte
 			var err error

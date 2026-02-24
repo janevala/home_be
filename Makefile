@@ -42,6 +42,7 @@ vet: clean
 	go mod init github.com/janevala/home_be
 	go vet ${PKG_LIST}
 
+# TODO there is too much logic chaining here. check together with build.sh, Dockerfile and this Makefile
 build: clean
 	go mod init github.com/janevala/home_be
 	go mod tidy

@@ -296,21 +296,23 @@ func init() {
 	httpRouter.HandleFunc("POST /translate", Ai.ExplainHandler(cfg.Ollama))
 	httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
 
-	http.Handle("/", httpRouter)
-	http.Handle("/jq", corsMiddleware(httpRouter))
-	http.Handle("/auth", httpRouter)
-	http.Handle("/sites", httpRouter)
-	http.Handle("/archive", httpRouter)
-	http.Handle("/search", httpRouter)
-	http.Handle("/refresh", httpRouter)
-	http.Handle("/translate", httpRouter)
+	corsRouter := corsMiddleware(httpRouter)
+
+	http.Handle("/", corsRouter)
+	http.Handle("/jq", corsRouter)
+	http.Handle("/auth", corsRouter)
+	http.Handle("/sites", corsRouter)
+	http.Handle("/archive", corsRouter)
+	http.Handle("/search", corsRouter)
+	http.Handle("/refresh", corsRouter)
+	http.Handle("/translate", corsRouter)
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
