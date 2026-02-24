@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -8,10 +9,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	Ai "github.com/janevala/home_be/ai"
@@ -172,7 +175,26 @@ func main() {
 	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
 	B.LogOut("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
 
-	B.LogFatal(server.ListenAndServe())
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			B.LogFatal(err)
+		}
+	}()
+
+	<-sigChan
+	B.LogOut("Shutting down gracefully...")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		B.LogErr("Server shutdown error:", err)
+	}
+
+	B.LogOut("Server stopped")
 }
 
 func init() {
