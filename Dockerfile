@@ -6,5 +6,6 @@ WORKDIR /homebe
 COPY . .
 RUN rm -f go.mod
 RUN rm -f go.sum
+RUN ./build.sh
 EXPOSE 7071
-CMD ["./start.sh"]
+CMD ["./home_be_backend"]

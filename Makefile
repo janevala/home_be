@@ -3,7 +3,7 @@
 
 GOOS ?= linux
 BUILDARCH ?= $(shell uname -m)
-BINARY_NAME := home_be
+BINARY_NAME := home_be_backend
 VERSION := $(shell git describe --always --long --dirty)
 PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/)
@@ -52,10 +52,10 @@ build: clean
 	go get github.com/joho/godotenv
 
 debug: build
-	GOARCH=${BUILDARCH} go build -v -tags debug -o ${BINARY_NAME}_${BUILDARCH} -ldflags="-X main.version=${VERSION}" main.go
+	GOARCH=${BUILDARCH} go build -v -tags debug -o ${BINARY_NAME} -ldflags="-X main.version=${VERSION}" main.go
 
 release: build
-	GOARCH=${BUILDARCH} go build -v -tags release -o ${BINARY_NAME}_${BUILDARCH} -ldflags="-X main.version=${VERSION}" main.go
+	GOARCH=${BUILDARCH} go build -v -tags release -o ${BINARY_NAME} -ldflags="-X main.version=${VERSION}" main.go
 
 run:
 	go run -tags debug main.go
@@ -67,6 +67,6 @@ clean:
 	rm -rf vendor
 	rm -rf go.sum
 	rm -rf go.mod
-	rm -f ${BINARY_NAME}_${BUILDARCH}
+	rm -f ${BINARY_NAME}
 
 rebuild: clean build

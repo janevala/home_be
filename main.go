@@ -155,7 +155,7 @@ func main() {
 	B.LogOut("In main()...")
 
 	if cfg == nil {
-		B.LogFatal("Config is nil")
+		B.LogOut("Config is nil")
 	}
 
 	defer db.Close()
@@ -175,26 +175,28 @@ func main() {
 	B.LogOut("Sites: " + fmt.Sprintf("%#v", cfg.Sites))
 	B.LogOut("Ollama: " + fmt.Sprintf("%#v", cfg.Ollama))
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	go func() {
+		B.LogOut("Server started...")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			B.LogFatal(err)
+			B.LogErr(err)
 		}
 	}()
 
-	<-sigChan
-	B.LogOut("Shutting down gracefully...")
+	<-ctx.Done()
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
+	B.LogOut("Shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		B.LogErr("Server shutdown error:", err)
+		B.LogErr(err)
 	}
 
-	B.LogOut("Server stopped")
+	B.LogOut("Server exited properly")
 }
 
 func init() {

@@ -30,19 +30,3 @@ func LogErr(err error) {
 
 	logger.Printf("[ERROR] %s", err.Error())
 }
-
-func LogFatal(v ...any) {
-	if len(v) == 0 || logger == nil {
-		return
-	}
-
-	logger.Fatalf("[FATAL] %v", v...)
-}
-
-func LogFatalf(format string, args ...interface{}) {
-	if format == "" || logger == nil {
-		return
-	}
-
-	logger.Fatalf("[FATAL] "+format, args...)
-}

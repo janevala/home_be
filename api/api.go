@@ -4,6 +4,7 @@ package api
 import (
 	"database/sql"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -267,7 +268,7 @@ func crawl(sites Conf.SitesConfig, db *sql.DB) {
 	for i := 0; i < len(sites.Sites); i++ {
 		feed, err := feedParser.ParseURL(sites.Sites[i].Url)
 		if err != nil {
-			B.LogFatal(err)
+			B.LogErr(err)
 		} else {
 			if feed.Image != nil {
 				for j := 0; j < len(feed.Items); j++ {
@@ -326,7 +327,7 @@ func crawl(sites Conf.SitesConfig, db *sql.DB) {
 			}
 
 			if pk <= pkAccumulated {
-				B.LogFatal("PK ERROR")
+				B.LogOut("PK minor error")
 			} else {
 				pkAccumulated = pk
 			}
@@ -351,7 +352,8 @@ func createTableIfNeeded(db *sql.DB) {
 
 	_, err := db.Exec(query)
 	if err != nil {
-		B.LogFatal(err)
+		B.LogErr(err)
+		os.Exit(1)
 	}
 }
 
