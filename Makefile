@@ -68,6 +68,6 @@ clean:
 	rm -rf vendor
 	rm -rf go.sum
 	rm -rf go.mod
-	rm -f ${BINARY_NAME}
+	rm -f ${BINARY_NAME}*
 
 rebuild: clean build
