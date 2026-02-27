@@ -60,6 +60,7 @@ The application provides the following REST API endpoints:
   - Request body: `{"query": "your question here"}`
   - Returns: AI-generated response
   - Note: Requires local Ollama server running on port 11434
+  - LLM: translategemma:12b https://ollama.com/library/translategemma/tags
 
 ## Notes
 - All endpoints require the `code=123` query parameter for authentication

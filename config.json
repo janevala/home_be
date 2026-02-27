@@ -7,7 +7,7 @@
 	"ollama": {
 		"host": "192.168.1.160",
 		"port": "11434",
-		"model": "translategemma:latest"
+		"model": "translategemma:12b"
 	},
 	"sites": {
 		"title": "News Feeds",
