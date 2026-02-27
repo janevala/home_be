@@ -167,7 +167,6 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	B.LogOut("Startup time: " + startupTime.Format(time.RFC3339))
 	B.LogOut("Version: " + version)
 	B.LogOut("Go Version: " + runtime.Version())
 	B.LogOut("Server listening on: " + cfg.Server.Port)

@@ -224,7 +224,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 
 							w.Header().Set("Access-Control-Allow-Origin", "*")
 							w.WriteHeader(http.StatusOK)
-							w.Write([]byte("Archive refresh completed with " + strconv.Itoa(records) + " records"))
+							w.Write([]byte("NUPD " + strconv.Itoa(records)))
 						}()
 
 						wg.Wait()
@@ -240,7 +240,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 						B.LogOut("News archive up to date")
 						w.Header().Set("Access-Control-Allow-Origin", "*")
 						w.WriteHeader(http.StatusOK)
-						w.Write([]byte("Archive up to date with " + strconv.Itoa(records) + " records"))
+						w.Write([]byte("UPD " + strconv.Itoa(records)))
 					}
 				}
 			}
