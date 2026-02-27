@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Statistics</title>
+    <title>Data Center Dashboard</title>
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -14,35 +14,37 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            color: #333;
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 20px;
         }
 
         header {
             text-align: center;
             color: white;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.8s ease;
         }
 
         header h1 {
-            font-size: 2.5em;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         header p {
-            font-size: 1.1em;
+            font-size: 1.1rem;
             opacity: 0.9;
         }
 
-        .grid {
+        .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
@@ -51,41 +53,62 @@
 
         .card {
             background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(4px);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            animation: fadeInUp 0.8s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .card h2 {
-            color: #667eea;
-            font-size: 1.3em;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
         }
 
-        .stat-row {
+        .card h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .metric {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e0e0e0;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
         }
 
-        .stat-row:last-child {
+        .metric:last-child {
             border-bottom: none;
         }
 
-        .stat-label {
-            color: #666;
+        .metric-label {
             font-weight: 500;
+            color: #718096;
         }
 
-        .stat-value {
-            color: #333;
+        .metric-value {
             font-weight: 700;
-            font-family: 'Courier New', monospace;
+            color: #2d3748;
+            font-size: 1.1rem;
         }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-good { background-color: #48bb78; }
+        .status-warning { background-color: #ed8936; }
+        .status-critical { background-color: #f56565; }
 
         .chart-container {
             position: relative;
@@ -93,384 +116,595 @@
             margin-top: 20px;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
+        .full-width {
+            grid-column: 1 / -1;
         }
 
-        .status-badge.healthy {
-            background-color: #d4edda;
-            color: #155724;
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
         }
 
-        .status-badge.warning {
-            background-color: #fff3cd;
-            color: #856404;
+        .refresh-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.3);
         }
 
-        .status-badge.critical {
-            background-color: #f8d7da;
-            color: #721c24;
+        .refresh-btn:active {
+            transform: scale(0.95);
         }
 
-        .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 1024px) {
-            .two-column {
-                grid-template-columns: 1fr;
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
         }
 
-        footer {
-            text-align: center;
-            color: white;
-            margin-top: 40px;
-            opacity: 0.8;
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .uptime-value {
-            color: #28a745;
-            font-size: 1.2em;
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .refresh-btn.loading {
+            animation: spin 1s linear infinite;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            transition: width 0.3s ease;
+        }
+
+        .alert {
+            background: #fed7d7;
+            border: 1px solid #fc8181;
+            color: #742a2a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>📊 Data Center</h1>
-            <p>Monitoring and performance metrics</p>
+            <h1>🖥️ Data Center Dashboard</h1>
+            <p>Real-time system monitoring and performance metrics</p>
         </header>
 
-        <script>
-            const stats = JSON.parse('{{.StatsJSON}}');
-            
-            function formatUptime(milliseconds) {
-                const totalSeconds = Math.floor(milliseconds / 1000);
-                const days = Math.floor(totalSeconds / 86400);
-                const hours = Math.floor((totalSeconds % 86400) / 3600);
-                const minutes = Math.floor((totalSeconds % 3600) / 60);
-                const seconds = totalSeconds % 60;
-                
-                if (days > 0) {
-                    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-                } else if (hours > 0) {
-                    return `${hours}h ${minutes}m ${seconds}s`;
-                } else if (minutes > 0) {
-                    return `${minutes}m ${seconds}s`;
-                } else {
-                    return `${seconds}s`;
-                }
-            }
+        <div id="alertBox" class="alert"></div>
 
-            function formatDuration(durationStr) {
-                return durationStr.replace('ms', ' ms').replace('µs', ' µs').replace('ns', ' ns');
-            }
-
-            function formatBytes(bytes) {
-                if (bytes === 0) return '0 B';
-                const k = 1024;
-                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-                const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-            }
-
-            function formatNanos(nanos) {
-                if (nanos === 0) return '0 ns';
-                const k = 1000;
-                const sizes = ['ns', 'µs', 'ms', 's'];
-                let value = nanos;
-                let i = 0;
-                while (value >= k && i < sizes.length - 1) {
-                    value /= k;
-                    i++;
-                }
-                return parseFloat(value.toFixed(2)) + ' ' + sizes[i];
-            }
-        </script>
-
-        <div class="grid">
-            <!-- System Info Card -->
+        <div class="dashboard-grid">
+            <!-- System Information Card -->
             <div class="card">
-                <h2>🖥️ System Information</h2>
-                <div class="stat-row">
-                    <span class="stat-label">OS</span>
-                    <span class="stat-value" id="os"></span>
+                <h3>📋 System Information</h3>
+                <div class="metric">
+                    <span class="metric-label">Uptime</span>
+                    <span class="metric-value" id="uptime">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Architecture</span>
-                    <span class="stat-value" id="arch"></span>
+                <div class="metric">
+                    <span class="metric-label">Operating System</span>
+                    <span class="metric-value" id="os">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Version</span>
-                    <span class="stat-value" id="version"></span>
+                <div class="metric">
+                    <span class="metric-label">Architecture</span>
+                    <span class="metric-value" id="arch">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Go Version</span>
-                    <span class="stat-value" id="go_version"></span>
+                <div class="metric">
+                    <span class="metric-label">Go Version</span>
+                    <span class="metric-value" id="goVersion">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Uptime</span>
-                    <span class="stat-value uptime-value" id="uptime"></span>
+                <div class="metric">
+                    <span class="metric-label">Application Version</span>
+                    <span class="metric-value" id="version">-</span>
                 </div>
             </div>
 
-            <!-- Runtime Card -->
+            <!-- Performance Metrics Card -->
             <div class="card">
-                <h2>⚙️ Runtime</h2>
-                <div class="stat-row">
-                    <span class="stat-label">CPU Cores</span>
-                    <span class="stat-value" id="cpu_cores"></span>
+                <h3>⚡ Performance Metrics</h3>
+                <div class="metric">
+                    <span class="metric-label">CPU Cores</span>
+                    <span class="metric-value" id="numCpu">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Goroutines</span>
-                    <span class="stat-value" id="goroutines"></span>
+                <div class="metric">
+                    <span class="metric-label">Goroutines</span>
+                    <span class="metric-value" id="numGoroutine">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">GOMAXPROCS</span>
-                    <span class="stat-value" id="gomaxprocs"></span>
+                <div class="metric">
+                    <span class="metric-label">GOMAXPROCS</span>
+                    <span class="metric-value" id="numGomaxprocs">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">NumCgoCall</span>
-                    <span class="stat-value" id="cgo_calls"></span>
+                <div class="metric">
+                    <span class="metric-label">CGO Calls</span>
+                    <span class="metric-value" id="numCgoCall">-</span>
                 </div>
             </div>
 
-            <!-- Memory Stats Card -->
+            <!-- Memory Usage Card -->
             <div class="card">
-                <h2>💾 Runtime Memory</h2>
-                <div class="stat-row">
-                    <span class="stat-label">Alloc</span>
-                    <span class="stat-value" id="mem_alloc"></span>
+                <h3>💾 Memory Usage</h3>
+                <div class="metric">
+                    <span class="metric-label">Allocated Memory</span>
+                    <span class="metric-value" id="allocMemory">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">TotalAlloc</span>
-                    <span class="stat-value" id="mem_total_alloc"></span>
+                <div class="metric">
+                    <span class="metric-label">Total Allocated</span>
+                    <span class="metric-value" id="totalAlloc">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Sys</span>
-                    <span class="stat-value" id="mem_sys"></span>
+                <div class="metric">
+                    <span class="metric-label">System Memory</span>
+                    <span class="metric-value" id="sysMemory">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">NumGC</span>
-                    <span class="stat-value" id="mem_num_gc"></span>
+                <div class="metric">
+                    <span class="metric-label">GC Cycles</span>
+                    <span class="metric-value" id="numGc">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">GC Pause Total</span>
+                    <span class="metric-value" id="pauseTotal">-</span>
                 </div>
             </div>
 
-            <!-- HTTP Requests Card -->
+            <!-- Database Connection Pool Card -->
             <div class="card">
-                <h2>📡 HTTP Requests</h2>
-                <div class="stat-row">
-                    <span class="stat-label">Total Requests</span>
-                    <span class="stat-value" id="total_requests"></span>
+                <h3>🗄️ Database Connections</h3>
+                <div class="metric">
+                    <span class="metric-label">
+                        <span class="status-indicator" id="dbStatus"></span>
+                        Connection Status
+                    </span>
+                    <span class="metric-value" id="dbStatusText">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Avg Response Time</span>
-                    <span class="stat-value" id="avg_response_time"></span>
+                <div class="metric">
+                    <span class="metric-label">Open Connections</span>
+                    <span class="metric-value" id="openConnections">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Total Response Time</span>
-                    <span class="stat-value" id="total_response_time"></span>
+                <div class="metric">
+                    <span class="metric-label">In Use</span>
+                    <span class="metric-value" id="inUse">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Idle</span>
+                    <span class="metric-value" id="idle">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Max Open</span>
+                    <span class="metric-value" id="maxOpenConnections">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Wait Count</span>
+                    <span class="metric-value" id="waitCount">-</span>
                 </div>
             </div>
 
-        </div>
-
-        <!-- Two Column Layout for Charts -->
-        <div class="two-column">
-            <!-- Database Connections Card -->
+            <!-- HTTP Statistics Card -->
             <div class="card">
-                <h2>🗄️ Database Connections</h2>
-                <div class="stat-row">
-                    <span class="stat-label">Open Connections</span>
-                    <span class="stat-value" id="db_open"></span>
+                <h3>🌐 HTTP Statistics</h3>
+                <div class="metric">
+                    <span class="metric-label">Total Requests</span>
+                    <span class="metric-value" id="totalRequests">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">In Use</span>
-                    <span class="stat-value" id="db_inuse"></span>
+                <div class="metric">
+                    <span class="metric-label">Average Response Time</span>
+                    <span class="metric-value" id="avgResponseTime">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Idle</span>
-                    <span class="stat-value" id="db_idle"></span>
+                <div class="metric">
+                    <span class="metric-label">2xx Responses</span>
+                    <span class="metric-value" id="successResponses">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Max Connections</span>
-                    <span class="stat-value" id="db_max"></span>
+                <div class="metric">
+                    <span class="metric-label">4xx Responses</span>
+                    <span class="metric-value" id="clientErrors">-</span>
                 </div>
-                <div class="stat-row">
-                    <span class="stat-label">Wait Count</span>
-                    <span class="stat-value" id="db_wait_count"></span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Wait Duration</span>
-                    <span class="stat-value" id="db_wait_duration"></span>
+                <div class="metric">
+                    <span class="metric-label">5xx Responses</span>
+                    <span class="metric-value" id="serverErrors">-</span>
                 </div>
             </div>
 
-            <!-- Request Methods Chart -->
-            <div class="card">
-                <h2>📊 Request Methods</h2>
+            <!-- Memory Chart -->
+            <div class="card full-width">
+                <h3>📊 Memory Usage Chart</h3>
                 <div class="chart-container">
-                    <canvas id="methodsChart"></canvas>
+                    <canvas id="memoryChart"></canvas>
                 </div>
             </div>
-        </div>
 
-        <!-- Response Codes Chart -->
-        <div class="card" style="margin-top: 30px; margin-bottom: 30px;">
-            <h2>📈 Response Status Codes</h2>
-            <div class="chart-container" style="height: 250px;">
-                <canvas id="statusChart"></canvas>
+            <!-- HTTP Methods Chart -->
+            <div class="card">
+                <h3>📈 HTTP Methods Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="httpMethodsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Response Codes Chart -->
+            <div class="card">
+                <h3>📉 HTTP Response Codes</h3>
+                <div class="chart-container">
+                    <canvas id="responseCodesChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
 
-    <footer>
-        <p>Last updated: <span id="update_time"></span></p>
-    </footer>
+    <button class="refresh-btn" onclick="refreshData()" title="Refresh Data">
+        🔄
+    </button>
 
     <script>
-        function updateStats() {
-            // System Info
+        let stats = JSON.parse('{{.StatsJSON}}');
+        let memoryChart, httpMethodsChart, responseCodesChart;
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatUptime(milliseconds) {
+            const seconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return `${days}d ${hours % 24}h ${minutes % 60}m`;
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+
+        function updateSystemInfo() {
+            document.getElementById('uptime').textContent = formatUptime(parseInt(stats.uptime));
             document.getElementById('os').textContent = stats.os;
             document.getElementById('arch').textContent = stats.arch;
+            document.getElementById('goVersion').textContent = stats.go_version;
             document.getElementById('version').textContent = stats.version;
-            document.getElementById('go_version').textContent = stats.go_version;
-            document.getElementById('uptime').textContent = formatUptime(parseInt(stats.uptime));
-
-            // Runtime
-            document.getElementById('cpu_cores').textContent = stats.num_cpu;
-            document.getElementById('goroutines').textContent = stats.num_goroutine;
-            document.getElementById('gomaxprocs').textContent = stats.num_gomaxprocs;
-            document.getElementById('cgo_calls').textContent = stats.num_cgo_call;
-
-            // HTTP Stats
-            document.getElementById('total_requests').textContent = stats.http_stats.TotalRequests;
-            document.getElementById('avg_response_time').textContent = formatDuration(stats.http_stats.AvgResponseTime);
-            document.getElementById('total_response_time').textContent = formatDuration(stats.http_stats.TotalResponseTime);
-
-            // Database Stats
-            const dbStats = stats.db_stats;
-            document.getElementById('db_open').textContent = dbStats.OpenConnections;
-            document.getElementById('db_inuse').textContent = dbStats.InUse;
-            document.getElementById('db_idle').textContent = dbStats.Idle;
-            document.getElementById('db_max').textContent = dbStats.MaxOpenConnections;
-            document.getElementById('db_wait_count').textContent = dbStats.WaitCount;
-            document.getElementById('db_wait_duration').textContent = dbStats.WaitDuration;
-
-            // Memory Stats
-            const memStats = stats.memory_stats;
-            document.getElementById('mem_alloc').textContent = formatBytes(memStats.Alloc);
-            document.getElementById('mem_total_alloc').textContent = formatBytes(memStats.TotalAlloc);
-            document.getElementById('mem_sys').textContent = formatBytes(memStats.Sys);
-            document.getElementById('mem_num_gc').textContent = memStats.NumGC;
-            document.getElementById('mem_pause_total').textContent = formatNanos(memStats.PauseTotalNs);
-
-            // Update timestamp
-            const now = new Date();
-            document.getElementById('update_time').textContent = now.toLocaleTimeString();
-
-            // Update charts
-            updateCharts();
         }
 
-        let methodsChart = null;
-        let statusChart = null;
+        function updatePerformanceMetrics() {
+            document.getElementById('numCpu').textContent = stats.num_cpu;
+            document.getElementById('numGoroutine').textContent = stats.num_goroutine;
+            document.getElementById('numGomaxprocs').textContent = stats.num_gomaxprocs;
+            document.getElementById('numCgoCall').textContent = parseInt(stats.num_cgo_call).toLocaleString();
+        }
 
-        function updateCharts() {
-            const methodCtx = document.getElementById('methodsChart');
-            const statusCtx = document.getElementById('statusChart');
+        function updateMemoryUsage() {
+            const memStats = stats.memory_stats;
+            document.getElementById('allocMemory').textContent = formatBytes(memStats.Alloc);
+            document.getElementById('totalAlloc').textContent = formatBytes(memStats.TotalAlloc);
+            document.getElementById('sysMemory').textContent = formatBytes(memStats.Sys);
+            document.getElementById('numGc').textContent = memStats.NumGC;
+            document.getElementById('pauseTotal').textContent = (memStats.PauseTotalNs / 1000000).toFixed(2) + ' ms';
+        }
 
-            // Request Methods Chart
-            const methods = Object.keys(stats.http_stats.RequestsByMethod || {});
-            const methodCounts = Object.values(stats.http_stats.RequestsByMethod || {});
-
-            if (methodsChart) {
-                methodsChart.data.labels = methods;
-                methodsChart.data.datasets[0].data = methodCounts;
-                methodsChart.update();
+        function updateDatabaseStats() {
+            const dbStats = stats.db_stats;
+            const statusIndicator = document.getElementById('dbStatus');
+            const statusText = document.getElementById('dbStatusText');
+            
+            if (dbStats.OpenConnections > 0) {
+                statusIndicator.className = 'status-indicator status-good';
+                statusText.textContent = 'Connected';
             } else {
-                methodsChart = new Chart(methodCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: methods,
-                        datasets: [{
-                            label: 'Requests',
-                            data: methodCounts,
-                            backgroundColor: [
-                                '#667eea',
-                                '#764ba2',
-                                '#f093fb',
-                                '#4facfe',
-                                '#00f2fe'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true
+                statusIndicator.className = 'status-indicator status-critical';
+                statusText.textContent = 'Disconnected';
+            }
+            
+            document.getElementById('openConnections').textContent = dbStats.OpenConnections;
+            document.getElementById('inUse').textContent = dbStats.InUse;
+            document.getElementById('idle').textContent = dbStats.Idle;
+            document.getElementById('maxOpenConnections').textContent = dbStats.MaxOpenConnections;
+            document.getElementById('waitCount').textContent = dbStats.WaitCount;
+        }
+
+        function updateHttpStats() {
+            const httpStats = stats.http_stats;
+            document.getElementById('totalRequests').textContent = httpStats.TotalRequests.toLocaleString();
+            document.getElementById('avgResponseTime').textContent = httpStats.AvgResponseTime;
+            
+            let success = 0, clientErrors = 0, serverErrors = 0;
+            for (const [code, count] of Object.entries(httpStats.ResponseCodeCount)) {
+                const codeNum = parseInt(code);
+                if (codeNum >= 200 && codeNum < 300) success += count;
+                else if (codeNum >= 400 && codeNum < 500) clientErrors += count;
+                else if (codeNum >= 500) serverErrors += count;
+            }
+            
+            document.getElementById('successResponses').textContent = success.toLocaleString();
+            document.getElementById('clientErrors').textContent = clientErrors.toLocaleString();
+            document.getElementById('serverErrors').textContent = serverErrors.toLocaleString();
+        }
+
+        function initCharts() {
+            // Memory Usage Chart
+            const memCtx = document.getElementById('memoryChart').getContext('2d');
+            memoryChart = new Chart(memCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Allocated', 'Total Allocated', 'System'],
+                    datasets: [{
+                        label: 'Memory Usage (MB)',
+                        data: [
+                            stats.memory_stats.Alloc / 1024 / 1024,
+                            stats.memory_stats.TotalAlloc / 1024 / 1024,
+                            stats.memory_stats.Sys / 1024 / 1024
+                        ],
+                        backgroundColor: ['rgba(102, 126, 234, 0.2)', 'rgba(118, 75, 162, 0.2)', 'rgba(72, 187, 120, 0.2)'],
+                        borderColor: ['rgba(102, 126, 234, 1)', 'rgba(118, 75, 162, 1)', 'rgba(72, 187, 120, 1)'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Memory (MB)'
                             }
                         }
                     }
-                });
-            }
-
-            // Response Status Codes Chart
-            const statusCodes = Object.keys(stats.http_stats.ResponseCodeCount || {});
-            const statusCounts = Object.values(stats.http_stats.ResponseCodeCount || {});
-
-            const colors = statusCodes.map(code => {
-                code = parseInt(code);
-                if (code >= 200 && code < 300) return '#28a745';
-                if (code >= 300 && code < 400) return '#17a2b8';
-                if (code >= 400 && code < 500) return '#ffc107';
-                if (code >= 500) return '#dc3545';
-                return '#6c757d';
+                }
             });
 
-            if (statusChart) {
-                statusChart.data.labels = statusCodes;
-                statusChart.data.datasets[0].data = statusCounts;
-                statusChart.data.datasets[0].backgroundColor = colors;
-                statusChart.update();
-            } else {
-                statusChart = new Chart(statusCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: statusCodes.map(code => `HTTP ${code}`),
-                        datasets: [{
-                            data: statusCounts,
-                            backgroundColor: colors
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
+            // HTTP Methods Chart
+            const methodsCtx = document.getElementById('httpMethodsChart').getContext('2d');
+            const httpStats = stats.http_stats;
+            httpMethodsChart = new Chart(methodsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(httpStats.RequestsByMethod),
+                    datasets: [{
+                        data: Object.values(httpStats.RequestsByMethod),
+                        backgroundColor: [
+                            'rgba(102, 126, 234, 0.8)',
+                            'rgba(118, 75, 162, 0.8)',
+                            'rgba(72, 187, 120, 0.8)',
+                            'rgba(237, 137, 54, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Response Codes Chart
+            const codesCtx = document.getElementById('responseCodesChart').getContext('2d');
+            const responseCodes = Object.entries(httpStats.ResponseCodeCount)
+                .sort((a, b) => a[0] - b[0]);
+            
+            responseCodesChart = new Chart(codesCtx, {
+                type: 'bar',
+                data: {
+                    labels: responseCodes.map(([code]) => code),
+                    datasets: [{
+                        label: 'Response Count',
+                        data: responseCodes.map(([, count]) => count),
+                        backgroundColor: responseCodes.map(([code]) => {
+                            const codeNum = parseInt(code);
+                            if (codeNum >= 200 && codeNum < 300) return 'rgba(72, 187, 120, 0.8)';
+                            if (codeNum >= 300 && codeNum < 400) return 'rgba(102, 126, 234, 0.8)';
+                            if (codeNum >= 400 && codeNum < 500) return 'rgba(237, 137, 54, 0.8)';
+                            return 'rgba(245, 101, 101, 0.8)';
+                        }),
+                        borderWidth: 2,
+                        borderColor: responseCodes.map(([code]) => {
+                            const codeNum = parseInt(code);
+                            if (codeNum >= 200 && codeNum < 300) return 'rgba(72, 187, 120, 1)';
+                            if (codeNum >= 300 && codeNum < 400) return 'rgba(102, 126, 234, 1)';
+                            if (codeNum >= 400 && codeNum < 500) return 'rgba(237, 137, 54, 1)';
+                            return 'rgba(245, 101, 101, 1)';
+                        })
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Count'
                             }
                         }
                     }
-                });
+                }
+            });
+        }
+
+        function showAlert(message, type = 'warning') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert show ${type}`;
+            setTimeout(() => {
+                alertBox.classList.remove('show');
+            }, 5000);
+        }
+
+        function checkForIssues() {
+            const memStats = stats.memory_stats;
+            const dbStats = stats.db_stats;
+            const httpStats = stats.http_stats;
+            
+            const issues = [];
+            
+            // Check memory usage
+            if (memStats.Alloc > 100 * 1024 * 1024) { // > 100MB
+                issues.push('High memory allocation detected');
+            }
+            
+            // Check database connections
+            if (dbStats.OpenConnections >= dbStats.MaxOpenConnections * 0.8) {
+                issues.push('Database connection pool nearing capacity');
+            }
+            
+            // Check HTTP errors
+            let errorCount = 0;
+            for (const [code, count] of Object.entries(httpStats.ResponseCodeCount)) {
+                const codeNum = parseInt(code);
+                if (codeNum >= 400) errorCount += count;
+            }
+            if (errorCount > httpStats.TotalRequests * 0.1) { // > 10% error rate
+                issues.push('High HTTP error rate detected');
+            }
+            
+            if (issues.length > 0) {
+                showAlert('⚠️ ' + issues.join('; '), 'warning');
             }
         }
 
-        updateStats();
+        function refreshData() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.classList.add('loading');
+            
+            fetch(window.location.href)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const scriptContent = doc.querySelector('script').textContent;
+                    const match = scriptContent.match(/JSON\.parse\('(.+?)'\)/);
+                    if (match) {
+                        stats = JSON.parse(match[1]);
+                        updateAllData();
+                        showAlert('✅ Data refreshed successfully', 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error refreshing data:', error);
+                    showAlert('❌ Failed to refresh data', 'error');
+                })
+                .finally(() => {
+                    btn.classList.remove('loading');
+                });
+        }
+
+        function updateAllData() {
+            updateSystemInfo();
+            updatePerformanceMetrics();
+            updateMemoryUsage();
+            updateDatabaseStats();
+            updateHttpStats();
+            checkForIssues();
+            
+            // Update charts
+            if (memoryChart) {
+                memoryChart.data.datasets[0].data = [
+                    stats.memory_stats.Alloc / 1024 / 1024,
+                    stats.memory_stats.TotalAlloc / 1024 / 1024,
+                    stats.memory_stats.Sys / 1024 / 1024
+                ];
+                memoryChart.update();
+            }
+            
+            if (httpMethodsChart) {
+                const httpStats = stats.http_stats;
+                httpMethodsChart.data.labels = Object.keys(httpStats.RequestsByMethod);
+                httpMethodsChart.data.datasets[0].data = Object.values(httpStats.RequestsByMethod);
+                httpMethodsChart.update();
+            }
+            
+            if (responseCodesChart) {
+                const httpStats = stats.http_stats;
+                const responseCodes = Object.entries(httpStats.ResponseCodeCount)
+                    .sort((a, b) => a[0] - b[0]);
+                responseCodesChart.data.labels = responseCodes.map(([code]) => code);
+                responseCodesChart.data.datasets[0].data = responseCodes.map(([, count]) => count);
+                responseCodesChart.data.datasets[0].backgroundColor = responseCodes.map(([code]) => {
+                    const codeNum = parseInt(code);
+                    if (codeNum >= 200 && codeNum < 300) return 'rgba(72, 187, 120, 0.8)';
+                    if (codeNum >= 300 && codeNum < 400) return 'rgba(102, 126, 234, 0.8)';
+                    if (codeNum >= 400 && codeNum < 500) return 'rgba(237, 137, 54, 0.8)';
+                    return 'rgba(245, 101, 101, 0.8)';
+                });
+                responseCodesChart.update();
+            }
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            refreshData();
+        }, 30000);
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            updateAllData();
+            initCharts();
+        });
     </script>
 </body>
 </html>
