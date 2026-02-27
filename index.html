@@ -387,10 +387,6 @@
         </div>
     </div>
 
-    <button class="refresh-btn" onclick="refreshData()" title="Refresh Data">
-        🔄
-    </button>
-
     <script>
         let stats = JSON.parse('{{.StatsJSON}}');
         let memoryChart, httpMethodsChart, responseCodesChart;
@@ -627,32 +623,6 @@
             }
         }
 
-        function refreshData() {
-            const btn = document.querySelector('.refresh-btn');
-            btn.classList.add('loading');
-            
-            fetch(window.location.href)
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const scriptContent = doc.querySelector('script').textContent;
-                    const match = scriptContent.match(/JSON\.parse\('(.+?)'\)/);
-                    if (match) {
-                        stats = JSON.parse(match[1]);
-                        updateAllData();
-                        showAlert('✅ Data refreshed successfully', 'success');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error refreshing data:', error);
-                    showAlert('❌ Failed to refresh data', 'error');
-                })
-                .finally(() => {
-                    btn.classList.remove('loading');
-                });
-        }
-
         function updateAllData() {
             updateSystemInfo();
             updatePerformanceMetrics();
@@ -694,11 +664,6 @@
                 responseCodesChart.update();
             }
         }
-
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
-            refreshData();
-        }, 30000);
 
         // Initialize dashboard
         document.addEventListener('DOMContentLoaded', function() {
