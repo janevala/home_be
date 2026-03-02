@@ -51,6 +51,12 @@ type NewsItems struct {
 	Offset     int        `json:"offset"`
 }
 
+type ArchiveRefreshResponse struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+	Oldest string `json:"oldest"`
+}
+
 func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -217,14 +223,27 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 							var records int
 							err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
 							if err != nil {
-								B.LogErr(err)
 								http.Error(w, "Database scan error", http.StatusInternalServerError)
 								return
 							}
 
-							w.Header().Set("Access-Control-Allow-Origin", "*")
+							var oldest time.Time
+							err = db.QueryRow("SELECT published_parsed FROM feed_items ORDER BY published_parsed ASC LIMIT 1").Scan(&oldest)
+							if err != nil {
+								http.Error(w, "Database scan error", http.StatusInternalServerError)
+								return
+							}
+
+							archiveRefreshResponse := ArchiveRefreshResponse{
+								Status: "Refreshed",
+								Count:  records,
+								Oldest: oldest.String(),
+							}
+
+							responseJson, _ := json.Marshal(archiveRefreshResponse)
+							w.Header().Set("Content-Type", "application/json")
 							w.WriteHeader(http.StatusOK)
-							w.Write([]byte("NUPD " + strconv.Itoa(records)))
+							w.Write(responseJson)
 						}()
 
 						wg.Wait()
@@ -232,15 +251,27 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 						var records int
 						err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
 						if err != nil {
-							B.LogErr(err)
 							http.Error(w, "Database scan error", http.StatusInternalServerError)
 							return
 						}
 
-						B.LogOut("News archive up to date")
-						w.Header().Set("Access-Control-Allow-Origin", "*")
+						var oldest time.Time
+						err = db.QueryRow("SELECT published_parsed FROM feed_items ORDER BY published_parsed ASC LIMIT 1").Scan(&oldest)
+						if err != nil {
+							http.Error(w, "Database scan error", http.StatusInternalServerError)
+							return
+						}
+
+						archiveRefreshResponse := ArchiveRefreshResponse{
+							Status: "Not needed",
+							Count:  records,
+							Oldest: oldest.String(),
+						}
+
+						responseJson, _ := json.Marshal(archiveRefreshResponse)
+						w.Header().Set("Content-Type", "application/json")
 						w.WriteHeader(http.StatusOK)
-						w.Write([]byte("UPD " + strconv.Itoa(records)))
+						w.Write(responseJson)
 					}
 				}
 			}
