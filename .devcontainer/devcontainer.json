@@ -1,21 +1,21 @@
-{
-	"name": "api-host",
-	"image": "mcr.microsoft.com/devcontainers/go:1.24",	
-	"features": {
-		"ghcr.io/devcontainers/features/go:1": {
-			"version": "1.24"
-		}
-	},
-	"runArgs": ["--network=home-network", "--name=api-host"],
-	"forwardPorts": [
-		7071	
-	],
-	"portsAttributes": {
-		"7071": {
-			"label": "Application",
-			"onAutoForward": "notify"
-		}
-	},
-	"postCreateCommand": "if [ ! -f go.mod ]; then go mod init github.com/janevala/home_be; fi",
-	"remoteUser": "root"
-}
+// {
+// 	"name": "api-host",
+// 	"image": "mcr.microsoft.com/devcontainers/go:1.24",	
+// 	"features": {
+// 		"ghcr.io/devcontainers/features/go:1": {
+// 			"version": "1.24"
+// 		}
+// 	},
+// 	"runArgs": ["--network=home-network", "--name=api-host"],
+// 	"forwardPorts": [
+// 		7071	
+// 	],
+// 	"portsAttributes": {
+// 		"7071": {
+// 			"label": "Application",
+// 			"onAutoForward": "notify"
+// 		}
+// 	},
+// 	"postCreateCommand": "if [ ! -f go.mod ]; then go mod init github.com/janevala/home_be; fi",
+// 	"remoteUser": "root"
+// }
