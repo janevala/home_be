@@ -120,10 +120,8 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			var rows *sql.Rows
-
 			if lang == "en" {
-				rows, err = db.Query(
+				rows, err := db.Query(
 					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
 					FROM feed_items 
 					ORDER BY published_parsed DESC 
@@ -182,7 +180,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 				w.WriteHeader(http.StatusOK)
 				w.Write(responseJson)
 			} else {
-				rows, err = db.Query(
+				rows, err := db.Query(
 					`SELECT item_id, language, title, description, llm 
 					FROM feed_translations 
 					WHERE language = $3 
@@ -214,6 +212,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 						`SELECT link, published, published_parsed, source, thumbnail, uuid 
 						FROM feed_items 
 						WHERE id = $1`, item_id)
+
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database query error", http.StatusInternalServerError)
@@ -532,65 +531,164 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			rows, err := db.Query(
-				`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
-				FROM feed_items 
-				WHERE title ILIKE '%' || $1 || '%' 
-				OR description ILIKE '%' || $1 || '%'
-				OR source ILIKE '%' || $1 || '%'
-				ORDER BY published_parsed DESC
-				LIMIT 50`, searchQuery)
+			lang := "en"
 
-			if err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database query error", http.StatusInternalServerError)
-				return
+			if L := query.Get("lang"); L != "" {
+				if L == "en" || L == "de" || L == "fi" || L == "th" {
+					lang = L
+				}
 			}
 
-			defer rows.Close()
+			if lang == "en" {
+				rows, err := db.Query(
+					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
+					FROM feed_items 
+					WHERE title ILIKE '%' || $1 || '%' 
+					OR description ILIKE '%' || $1 || '%'
+					OR source ILIKE '%' || $1 || '%'
+					ORDER BY published_parsed DESC
+					LIMIT 50`, searchQuery)
 
-			var source string
-			var title string
-			var description string
-			var link string
-			var published string
-			var published_parsed *time.Time
-			var linkImage string
-			var uuid string
-
-			items := []NewsItem{}
-			for rows.Next() {
-				err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &uuid)
 				if err != nil {
 					B.LogErr(err)
-					http.Error(w, "Database scan error", http.StatusInternalServerError)
+					http.Error(w, "Database query error", http.StatusInternalServerError)
 					return
 				}
 
-				items = append(items, NewsItem{
-					Source:          source,
-					Title:           title,
-					Description:     description,
-					Link:            link,
-					Published:       published,
-					PublishedParsed: published_parsed,
-					LinkImage:       linkImage,
-					Uuid:            uuid,
-				})
-			}
+				defer rows.Close()
 
-			newsItems := NewsItems{
-				Items:      items,
-				TotalItems: len(items),
-				Limit:      0,
-				Offset:     0,
-			}
+				var source string
+				var title string
+				var description string
+				var link string
+				var published string
+				var published_parsed *time.Time
+				var linkImage string
+				var uuid string
 
-			responseJson, _ := json.Marshal(newsItems)
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.WriteHeader(http.StatusOK)
-			w.Write(responseJson)
+				items := []NewsItem{}
+				for rows.Next() {
+					err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &linkImage, &uuid)
+					if err != nil {
+						B.LogErr(err)
+						http.Error(w, "Database scan error", http.StatusInternalServerError)
+						return
+					}
+
+					items = append(items, NewsItem{
+						Source:          source,
+						Title:           title,
+						Description:     description,
+						Link:            link,
+						Published:       published,
+						PublishedParsed: published_parsed,
+						LinkImage:       linkImage,
+						Uuid:            uuid,
+					})
+				}
+
+				defer rows.Close()
+
+				newsItems := NewsItems{
+					Items:      items,
+					TotalItems: len(items),
+					Limit:      0,
+					Offset:     0,
+				}
+
+				responseJson, _ := json.Marshal(newsItems)
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.WriteHeader(http.StatusOK)
+				w.Write(responseJson)
+			} else {
+				rows, err := db.Query(
+					`SELECT item_id, language, title, description, llm
+					FROM feed_translations
+					WHERE language = $2
+					AND (title ILIKE '%' || $1 || '%'
+					OR description ILIKE '%' || $1 || '%')
+					ORDER BY published_parsed DESC
+					LIMIT 50`, searchQuery, lang)
+
+				if err != nil {
+					B.LogErr(err)
+					http.Error(w, "Database query error", http.StatusInternalServerError)
+					return
+				}
+
+				var item_id string
+				var language string
+				var title string
+				var description string
+				var llm string
+
+				items := []NewsItem{}
+				for rows.Next() {
+					err := rows.Scan(&item_id, &language, &title, &description, &llm)
+					if err != nil {
+						B.LogErr(err)
+						http.Error(w, "Database scan error", http.StatusInternalServerError)
+						return
+					}
+
+					rows2, err := db.Query(
+						`SELECT link, published, published_parsed, source, thumbnail, uuid 
+						FROM feed_items 
+						WHERE id = $1`, item_id)
+
+					if err != nil {
+						B.LogErr(err)
+						http.Error(w, "Database query error", http.StatusInternalServerError)
+						return
+					}
+
+					var source string
+					var link string
+					var published string
+					var published_parsed *time.Time
+					var linkImage string
+					var uuid string
+
+					if rows2.Next() {
+						err := rows2.Scan(&link, &published, &published_parsed, &source, &linkImage, &uuid)
+						if err != nil {
+							B.LogErr(err)
+							http.Error(w, "Database scan error", http.StatusInternalServerError)
+							return
+						}
+
+						items = append(items, NewsItem{
+							Source:          source,
+							Title:           title,
+							Description:     description,
+							Link:            link,
+							Published:       published,
+							PublishedParsed: published_parsed,
+							LinkImage:       linkImage,
+							Uuid:            uuid,
+							Llm:             llm,
+						})
+					}
+
+					defer rows2.Close()
+				}
+
+				defer rows.Close()
+
+				newsItems := NewsItems{
+					Items:      items,
+					TotalItems: len(items),
+					Limit:      0,
+					Offset:     0,
+				}
+
+				responseJson, _ := json.Marshal(newsItems)
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.WriteHeader(http.StatusOK)
+				w.Write(responseJson)
+			}
 		}
 	}
 }
