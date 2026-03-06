@@ -181,12 +181,13 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 				w.Write(responseJson)
 			} else {
 				rows, err := db.Query(
-					`SELECT item_id, language, title, description, llm 
+					`SELECT item_id, published_parsed, language, title, description, llm 
 					FROM feed_translations 
 					WHERE language = $3 
 					ORDER BY published_parsed DESC 
 					LIMIT $1 OFFSET $2`,
 					limit, offset, lang)
+
 				if err != nil {
 					B.LogErr(err)
 					http.Error(w, "Database query error", http.StatusInternalServerError)
@@ -194,6 +195,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 				}
 
 				var item_id string
+				var published_parsed *time.Time
 				var language string
 				var title string
 				var description string
@@ -201,7 +203,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&item_id, &language, &title, &description, &llm)
+					err := rows.Scan(&item_id, &published_parsed, &language, &title, &description, &llm)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -302,7 +304,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 					}
 
 					// NOTE FIXME: translation logic work ongoing. putting very long check
-					if now.Sub(lastCreated) > 96*time.Hour {
+					if now.Sub(lastCreated) > 1*time.Hour {
 						B.LogOut("Starting archive refresh...")
 						B.LogOut("Last refresh was at: " + lastCreated.String())
 						B.LogOut("Current time is: " + now.String())
