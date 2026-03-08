@@ -337,6 +337,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 						err := rows2.Scan(&link, &published, &source, &linkImage, &uuid)
 						if err != nil {
 							B.LogErr(err)
+							rows2.Close()
 							http.Error(w, "Database scan error", http.StatusInternalServerError)
 							return
 						}
@@ -354,7 +355,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 						})
 					}
 
-					defer rows2.Close()
+					rows2.Close()
 				}
 
 				defer rows.Close()
@@ -521,6 +522,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 						err := rows2.Scan(&link, &published, &source, &linkImage, &uuid)
 						if err != nil {
 							B.LogErr(err)
+							rows2.Close()
 							http.Error(w, "Database scan error", http.StatusInternalServerError)
 							return
 						}
@@ -538,7 +540,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 						})
 					}
 
-					defer rows2.Close()
+					rows2.Close()
 				}
 
 				defer rows.Close()
