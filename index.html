@@ -7,7 +7,169 @@
     <script src="https://unpkg.com/htmx.org@1.9.2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .panel:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .panel-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+        }
+        
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-weight: 700;
+            color: #333;
+            font-size: 1.1rem;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-good {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
+        
+        .status-warning {
+            background: #f59e0b;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+        }
+        
+        .status-error {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+        }
+        
+        .translation-status {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-top: 15px;
+        }
+        
+        .translation-status.ok {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        
+        .translation-status.stale {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        
+        .timestamp {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -17,9 +179,271 @@
             <p>Real-time system monitoring and performance metrics</p>
         </header>
 
+        <div class="dashboard-grid">
+            <!-- System Status Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">⚙️</span>
+                    <h2 class="panel-title">System Status</h2>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Uptime</span>
+                    <span class="metric-value" id="uptime">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Version</span>
+                    <span class="metric-value" id="version">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Go Version</span>
+                    <span class="metric-value" id="go-version">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">OS/Arch</span>
+                    <span class="metric-value" id="os-arch">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">CPU Cores</span>
+                    <span class="metric-value" id="cpu-cores">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Goroutines</span>
+                    <span class="metric-value" id="goroutines">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Database Status Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🗄️</span>
+                    <h2 class="panel-title">Database Status</h2>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Open Connections</span>
+                    <span class="metric-value" id="db-connections">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">In Use</span>
+                    <span class="metric-value" id="db-inuse">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Idle</span>
+                    <span class="metric-value" id="db-idle">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Wait Count</span>
+                    <span class="metric-value" id="db-wait-count">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Wait Duration</span>
+                    <span class="metric-value" id="db-wait-duration">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Content Overview Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">📊</span>
+                    <h2 class="panel-title">Content Overview</h2>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Feed Items</span>
+                    <span class="metric-value" id="total-items">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Translations</span>
+                    <span class="metric-value" id="total-translations">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Newest Item</span>
+                    <span class="metric-value" id="newest-item">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Oldest Item</span>
+                    <span class="metric-value" id="oldest-item">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Translation Status Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🔄</span>
+                    <h2 class="panel-title">Translation Status</h2>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Newest Translation</span>
+                    <span class="metric-value" id="newest-translation">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Oldest Translation</span>
+                    <span class="metric-value" id="oldest-translation">Loading...</span>
+                </div>
+                <div id="translation-status-panel">
+                    <!-- Translation status will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Memory Usage Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">💾</span>
+                    <h2 class="panel-title">Memory Usage</h2>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Allocated</span>
+                    <span class="metric-value" id="memory-alloc">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Allocated</span>
+                    <span class="metric-value" id="memory-total">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">System</span>
+                    <span class="metric-value" id="memory-sys">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">GC Cycles</span>
+                    <span class="metric-value" id="gc-cycles">Loading...</span>
+                </div>
+            </div>
+
+            <!-- HTTP Stats Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-icon">🌐</span>
+                    <h2 class="panel-title">HTTP Statistics</h2>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Requests</span>
+                    <span class="metric-value" id="http-total">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Average Response Time</span>
+                    <span class="metric-value" id="http-avg-time">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">2xx Responses</span>
+                    <span class="metric-value" id="http-2xx">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">4xx Responses</span>
+                    <span class="metric-value" id="http-4xx">Loading...</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">5xx Responses</span>
+                    <span class="metric-value" id="http-5xx">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         let stats = JSON.parse('{{.StatsJSON}}');
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            
+            if (days > 0) return days + 'd ' + (hours % 24) + 'h';
+            if (hours > 0) return hours + 'h ' + (minutes % 60) + 'm';
+            if (minutes > 0) return minutes + 'm ' + (seconds % 60) + 's';
+            return seconds + 's';
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString || dateString === '1970-01-01T00:00:00Z') return 'N/A';
+            return new Date(dateString).toLocaleString();
+        }
+        
+        function checkTranslationStatus() {
+            const dbContents = stats.db_contents;
+            if (!dbContents || !dbContents.NewestFeedItem || !dbContents.NewestFeedTranslation) {
+                return;
+            }
+            
+            const newestItem = new Date(dbContents.NewestFeedItem);
+            const newestTranslation = new Date(dbContents.NewestFeedTranslation);
+            const diffMs = newestItem - newestTranslation;
+            const diffDays = diffMs / (1000 * 60 * 60 * 24);
+            
+            const statusPanel = document.getElementById('translation-status-panel');
+            let statusHtml = '';
+            
+            if (diffDays > 1) {
+                statusHtml = `
+                    <div class="translation-status stale">
+                        <span class="status-indicator status-error"></span>
+                        ⚠️ Translations are ${Math.floor(diffDays)} days behind
+                        <div class="timestamp">Latest item: ${formatDate(dbContents.NewestFeedItem)}</div>
+                        <div class="timestamp">Latest translation: ${formatDate(dbContents.NewestFeedTranslation)}</div>
+                    </div>
+                `;
+            } else {
+                statusHtml = `
+                    <div class="translation-status ok">
+                        <span class="status-indicator status-good"></span>
+                        ✅ Translations are up to date
+                        <div class="timestamp">Latest item: ${formatDate(dbContents.NewestFeedItem)}</div>
+                        <div class="timestamp">Latest translation: ${formatDate(dbContents.NewestFeedTranslation)}</div>
+                    </div>
+                `;
+            }
+            
+            statusPanel.innerHTML = statusHtml;
+        }
+        
+        // Update System Status
+        document.getElementById('uptime').textContent = formatDuration(stats.uptime);
+        document.getElementById('version').textContent = stats.version;
+        document.getElementById('go-version').textContent = stats.go_version;
+        document.getElementById('os-arch').textContent = stats.os + '/' + stats.arch;
+        document.getElementById('cpu-cores').textContent = stats.num_cpu;
+        document.getElementById('goroutines').textContent = stats.num_goroutine;
+        
+        // Update Database Status
+        const dbStats = stats.db_stats;
+        document.getElementById('db-connections').textContent = dbStats.OpenConnections + ' / ' + dbStats.MaxOpenConnections;
+        document.getElementById('db-inuse').textContent = dbStats.InUse;
+        document.getElementById('db-idle').textContent = dbStats.Idle;
+        document.getElementById('db-wait-count').textContent = dbStats.WaitCount;
+        document.getElementById('db-wait-duration').textContent = dbStats.WaitDuration;
+        
+        // Update Content Overview
+        const dbContents = stats.db_contents;
+        document.getElementById('total-items').textContent = dbContents.TotalFeedItems.toLocaleString();
+        document.getElementById('total-translations').textContent = dbContents.TotalFeedTranslations.toLocaleString();
+        document.getElementById('newest-item').textContent = formatDate(dbContents.NewestFeedItem);
+        document.getElementById('oldest-item').textContent = formatDate(dbContents.OldestFeedItem);
+        
+        // Update Translation Status
+        document.getElementById('newest-translation').textContent = formatDate(dbContents.NewestFeedTranslation);
+        document.getElementById('oldest-translation').textContent = formatDate(dbContents.OldestFeedTranslation);
+        checkTranslationStatus();
+        
+        // Update Memory Usage
+        const memStats = stats.memory_stats;
+        document.getElementById('memory-alloc').textContent = formatBytes(memStats.Alloc);
+        document.getElementById('memory-total').textContent = formatBytes(memStats.TotalAlloc);
+        document.getElementById('memory-sys').textContent = formatBytes(memStats.Sys);
+        document.getElementById('gc-cycles').textContent = memStats.NumGC.toLocaleString();
+        
+        // Update HTTP Stats
+        const httpStats = stats.http_stats;
+        document.getElementById('http-total').textContent = httpStats.TotalRequests.toLocaleString();
+        document.getElementById('http-avg-time').textContent = httpStats.AvgResponseTime;
+        document.getElementById('http-2xx').textContent = (httpStats.ResponseCodeCount['200'] || 0).toLocaleString();
+        document.getElementById('http-4xx').textContent = (httpStats.ResponseCodeCount['404'] || 0).toLocaleString();
+        document.getElementById('http-5xx').textContent = (httpStats.ResponseCodeCount['500'] || 0).toLocaleString();
     </script>
 </body>
 </html>
