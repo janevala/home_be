@@ -76,6 +76,112 @@ func SitesHandler(sites Conf.SitesConfig) http.HandlerFunc {
 	}
 }
 
+func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			if !strings.Contains(req.URL.RawQuery, "code=123") {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid"))
+				return
+			}
+
+			row, err := db.Query("SELECT created FROM feed_items ORDER BY created DESC LIMIT 1")
+
+			if err != nil {
+				B.LogErr(err)
+				http.Error(w, "Database refresh error", http.StatusInternalServerError)
+				return
+			}
+
+			defer row.Close()
+
+			if row != nil {
+				for row.Next() {
+					var now = time.Now()
+					var lastCreated time.Time
+					err := row.Scan(&lastCreated)
+
+					if err != nil {
+						B.LogErr(err)
+						http.Error(w, "Database scan error", http.StatusInternalServerError)
+						return
+					}
+
+					// NOTE FIXME: translation logic work ongoing. putting very long check
+					if now.Sub(lastCreated) > 1*time.Hour {
+						B.LogOut("Starting archive refresh...")
+						B.LogOut("Last refresh was at: " + lastCreated.String())
+						B.LogOut("Current time is: " + now.String())
+
+						var wg sync.WaitGroup
+						wg.Add(1)
+
+						go func() {
+							defer wg.Done()
+							defer B.LogOut("Crawling completed")
+
+							crawl(sites, db)
+
+							var records int
+							err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
+							if err != nil {
+								http.Error(w, "Database scan error", http.StatusInternalServerError)
+								return
+							}
+
+							var oldest time.Time
+							err = db.QueryRow("SELECT published_parsed FROM feed_items ORDER BY published_parsed ASC LIMIT 1").Scan(&oldest)
+							if err != nil {
+								http.Error(w, "Database scan error", http.StatusInternalServerError)
+								return
+							}
+
+							archiveRefreshResponse := ArchiveRefreshResponse{
+								Status: "Refreshed",
+								Count:  records,
+								Oldest: oldest.String(),
+							}
+
+							responseJson, _ := json.Marshal(archiveRefreshResponse)
+							w.Header().Set("Content-Type", "application/json")
+							w.WriteHeader(http.StatusOK)
+							w.Write(responseJson)
+						}()
+
+						wg.Wait()
+					} else {
+						var records int
+						err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
+						if err != nil {
+							http.Error(w, "Database scan error", http.StatusInternalServerError)
+							return
+						}
+
+						var oldest time.Time
+						err = db.QueryRow("SELECT published_parsed FROM feed_items ORDER BY published_parsed ASC LIMIT 1").Scan(&oldest)
+						if err != nil {
+							http.Error(w, "Database scan error", http.StatusInternalServerError)
+							return
+						}
+
+						archiveRefreshResponse := ArchiveRefreshResponse{
+							Status: "Not needed",
+							Count:  records,
+							Oldest: oldest.String(),
+						}
+
+						responseJson, _ := json.Marshal(archiveRefreshResponse)
+						w.Header().Set("Content-Type", "application/json")
+						w.WriteHeader(http.StatusOK)
+						w.Write(responseJson)
+					}
+				}
+			}
+		}
+	}
+}
+
 func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -211,7 +317,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					rows2, err := db.Query(
-						`SELECT link, published, published_parsed, source, thumbnail, uuid 
+						`SELECT link, published, source, thumbnail, uuid 
 						FROM feed_items 
 						WHERE id = $1`, item_id)
 
@@ -224,12 +330,11 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 					var source string
 					var link string
 					var published string
-					var published_parsed *time.Time
 					var linkImage string
 					var uuid string
 
 					if rows2.Next() {
-						err := rows2.Scan(&link, &published, &published_parsed, &source, &linkImage, &uuid)
+						err := rows2.Scan(&link, &published, &source, &linkImage, &uuid)
 						if err != nil {
 							B.LogErr(err)
 							http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -266,112 +371,6 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				w.WriteHeader(http.StatusOK)
 				w.Write(responseJson)
-			}
-		}
-	}
-}
-
-func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		switch req.Method {
-		case http.MethodGet:
-			if !strings.Contains(req.URL.RawQuery, "code=123") {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("Invalid"))
-				return
-			}
-
-			row, err := db.Query("SELECT created FROM feed_items ORDER BY created DESC LIMIT 1")
-
-			if err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database refresh error", http.StatusInternalServerError)
-				return
-			}
-
-			defer row.Close()
-
-			if row != nil {
-				for row.Next() {
-					var now = time.Now()
-					var lastCreated time.Time
-					err := row.Scan(&lastCreated)
-
-					if err != nil {
-						B.LogErr(err)
-						http.Error(w, "Database scan error", http.StatusInternalServerError)
-						return
-					}
-
-					// NOTE FIXME: translation logic work ongoing. putting very long check
-					if now.Sub(lastCreated) > 1*time.Hour {
-						B.LogOut("Starting archive refresh...")
-						B.LogOut("Last refresh was at: " + lastCreated.String())
-						B.LogOut("Current time is: " + now.String())
-
-						var wg sync.WaitGroup
-						wg.Add(1)
-
-						go func() {
-							defer wg.Done()
-							defer B.LogOut("Crawling completed")
-
-							crawl(sites, db)
-
-							var records int
-							err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
-							if err != nil {
-								http.Error(w, "Database scan error", http.StatusInternalServerError)
-								return
-							}
-
-							var oldest time.Time
-							err = db.QueryRow("SELECT published_parsed FROM feed_items ORDER BY published_parsed ASC LIMIT 1").Scan(&oldest)
-							if err != nil {
-								http.Error(w, "Database scan error", http.StatusInternalServerError)
-								return
-							}
-
-							archiveRefreshResponse := ArchiveRefreshResponse{
-								Status: "Refreshed",
-								Count:  records,
-								Oldest: oldest.String(),
-							}
-
-							responseJson, _ := json.Marshal(archiveRefreshResponse)
-							w.Header().Set("Content-Type", "application/json")
-							w.WriteHeader(http.StatusOK)
-							w.Write(responseJson)
-						}()
-
-						wg.Wait()
-					} else {
-						var records int
-						err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&records)
-						if err != nil {
-							http.Error(w, "Database scan error", http.StatusInternalServerError)
-							return
-						}
-
-						var oldest time.Time
-						err = db.QueryRow("SELECT published_parsed FROM feed_items ORDER BY published_parsed ASC LIMIT 1").Scan(&oldest)
-						if err != nil {
-							http.Error(w, "Database scan error", http.StatusInternalServerError)
-							return
-						}
-
-						archiveRefreshResponse := ArchiveRefreshResponse{
-							Status: "Not needed",
-							Count:  records,
-							Oldest: oldest.String(),
-						}
-
-						responseJson, _ := json.Marshal(archiveRefreshResponse)
-						w.Header().Set("Content-Type", "application/json")
-						w.WriteHeader(http.StatusOK)
-						w.Write(responseJson)
-					}
-				}
 			}
 		}
 	}
@@ -431,6 +430,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 				var published_parsed *time.Time
 				var linkImage string
 				var uuid string
+				var llm string = "original"
 
 				items := []NewsItem{}
 				for rows.Next() {
@@ -450,6 +450,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 						PublishedParsed: published_parsed,
 						LinkImage:       linkImage,
 						Uuid:            uuid,
+						Llm:             llm,
 					})
 				}
 
@@ -469,7 +470,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 				w.Write(responseJson)
 			} else {
 				rows, err := db.Query(
-					`SELECT item_id, language, title, description, llm
+					`SELECT item_id, published_parsed, language, title, description, llm
 					FROM feed_translations
 					WHERE language = $2
 					AND (title ILIKE '%' || $1 || '%'
@@ -484,6 +485,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 				}
 
 				var item_id string
+				var published_parsed *time.Time
 				var language string
 				var title string
 				var description string
@@ -491,7 +493,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&item_id, &language, &title, &description, &llm)
+					err := rows.Scan(&item_id, &published_parsed, &language, &title, &description, &llm)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -499,7 +501,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					rows2, err := db.Query(
-						`SELECT link, published, published_parsed, source, thumbnail, uuid 
+						`SELECT link, published, source, thumbnail, uuid 
 						FROM feed_items 
 						WHERE id = $1`, item_id)
 
@@ -512,12 +514,11 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 					var source string
 					var link string
 					var published string
-					var published_parsed *time.Time
 					var linkImage string
 					var uuid string
 
 					if rows2.Next() {
-						err := rows2.Scan(&link, &published, &published_parsed, &source, &linkImage, &uuid)
+						err := rows2.Scan(&link, &published, &source, &linkImage, &uuid)
 						if err != nil {
 							B.LogErr(err)
 							http.Error(w, "Database scan error", http.StatusInternalServerError)
