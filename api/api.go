@@ -377,142 +377,6 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 	}
 }
 
-func crawl(sites Conf.SitesConfig, db *sql.DB) {
-	feedParser := gofeed.NewParser()
-
-	var combinedItems []*NewsItem = []*NewsItem{}
-	for i := 0; i < len(sites.Sites); i++ {
-		feed, err := feedParser.ParseURL(sites.Sites[i].Url)
-		if err != nil {
-			B.LogErr(err)
-		} else {
-			if feed.Image != nil {
-				for j := 0; j < len(feed.Items); j++ {
-					feed.Items[j].Image = feed.Image
-				}
-			} else {
-				for j := 0; j < len(feed.Items); j++ {
-					feed.Items[j].Image = &gofeed.Image{
-						URL:   "https://github.com/janevala/home_be_crawler.git",
-						Title: "N/A",
-					}
-				}
-			}
-
-			var items []*NewsItem = []*NewsItem{}
-			for j := 0; j < len(feed.Items); j++ {
-				NewsItem := &NewsItem{
-					Source:          sites.Sites[i].Title,
-					Title:           strings.TrimSpace(feed.Items[j].Title),
-					Description:     feed.Items[j].Description,
-					Content:         feed.Items[j].Content,
-					Link:            feed.Items[j].Link,
-					Published:       feed.Items[j].Published,
-					PublishedParsed: feed.Items[j].PublishedParsed,
-					LinkImage:       feed.Items[j].Image.URL,
-					Uuid:            uuid.NewString(),
-				}
-
-				items = append(items, NewsItem)
-			}
-
-			combinedItems = append(combinedItems, items...)
-		}
-	}
-
-	if len(combinedItems) > 0 {
-		for i := 0; i < len(combinedItems); i++ {
-			combinedItems[i].Description = ellipticalTruncate(combinedItems[i].Description, 500)
-
-			// Hashing title to create unique ID, that serves as mechanism to prevent duplicates in DB
-			uuidString := base64.StdEncoding.EncodeToString([]byte(ellipticalTruncate(combinedItems[i].Title, 35)))
-			combinedItems[i].Uuid = uuidString
-		}
-
-		sort.Slice(combinedItems, func(i, j int) bool {
-			return combinedItems[i].PublishedParsed.After(*combinedItems[j].PublishedParsed)
-		})
-
-		createTableIfNeeded(db)
-
-		var pkAccumulated int
-		for i := 0; i < len(combinedItems); i++ {
-			var pk = insertItem(db, combinedItems[i])
-			if pk == 0 {
-				continue
-			}
-
-			if pk <= pkAccumulated {
-				B.LogOut("PK minor error")
-			} else {
-				pkAccumulated = pk
-			}
-		}
-	}
-}
-
-func createTableIfNeeded(db *sql.DB) {
-	query := `CREATE TABLE IF NOT EXISTS feed_items (
-		id SERIAL PRIMARY KEY,
-		title VARCHAR(500) NOT NULL,
-		description VARCHAR(1000) NOT NULL,
-		link VARCHAR(500) NOT NULL,
-		published timestamp NOT NULL,
-		published_parsed timestamp NOT NULL,
-		source VARCHAR(300) NOT NULL,
-		thumbnail VARCHAR(500),
-		uuid VARCHAR(300) NOT NULL,
-		created timestamp DEFAULT NOW(),
-		UNIQUE (uuid)
-	)`
-
-	_, err := db.Exec(query)
-	if err != nil {
-		B.LogErr(err)
-		os.Exit(1)
-	}
-}
-
-func insertItem(db *sql.DB, item *NewsItem) int {
-	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, thumbnail, uuid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING RETURNING id"
-
-	var pk int
-	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Source, item.LinkImage, item.Uuid).Scan(&pk)
-
-	if err != nil {
-		B.LogOut(err.Error() + " - duplicate uuid: " + item.Uuid)
-	} else {
-		B.LogOut("Inserted item (pk: " + strconv.Itoa(pk) + "): " + ellipticalTruncate(item.Title, 35))
-	}
-
-	return pk
-}
-
-// https://stackoverflow.com/a/73939904 find better way with AI if needed
-func ellipticalTruncate(text string, maxLen int) string {
-	lastSpaceIx := maxLen
-	len := 0
-	for i, r := range text {
-		if unicode.IsSpace(r) {
-			lastSpaceIx = i
-		}
-		len++
-		if len > maxLen {
-			return text[:lastSpaceIx] + "..."
-		}
-	}
-
-	return text
-}
-
-func stringLength(str string) int {
-	var length int
-	for range str {
-		length++
-	}
-	return length
-}
-
 func SearchHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -742,4 +606,140 @@ func FakeAuthHandler(db *sql.DB) http.HandlerFunc {
 			}
 		}
 	}
+}
+
+func crawl(sites Conf.SitesConfig, db *sql.DB) {
+	feedParser := gofeed.NewParser()
+
+	var combinedItems []*NewsItem = []*NewsItem{}
+	for i := 0; i < len(sites.Sites); i++ {
+		feed, err := feedParser.ParseURL(sites.Sites[i].Url)
+		if err != nil {
+			B.LogErr(err)
+		} else {
+			if feed.Image != nil {
+				for j := 0; j < len(feed.Items); j++ {
+					feed.Items[j].Image = feed.Image
+				}
+			} else {
+				for j := 0; j < len(feed.Items); j++ {
+					feed.Items[j].Image = &gofeed.Image{
+						URL:   "https://github.com/janevala/home_be_crawler.git",
+						Title: "N/A",
+					}
+				}
+			}
+
+			var items []*NewsItem = []*NewsItem{}
+			for j := 0; j < len(feed.Items); j++ {
+				NewsItem := &NewsItem{
+					Source:          sites.Sites[i].Title,
+					Title:           strings.TrimSpace(feed.Items[j].Title),
+					Description:     feed.Items[j].Description,
+					Content:         feed.Items[j].Content,
+					Link:            feed.Items[j].Link,
+					Published:       feed.Items[j].Published,
+					PublishedParsed: feed.Items[j].PublishedParsed,
+					LinkImage:       feed.Items[j].Image.URL,
+					Uuid:            uuid.NewString(),
+				}
+
+				items = append(items, NewsItem)
+			}
+
+			combinedItems = append(combinedItems, items...)
+		}
+	}
+
+	if len(combinedItems) > 0 {
+		for i := 0; i < len(combinedItems); i++ {
+			combinedItems[i].Description = ellipticalTruncate(combinedItems[i].Description, 500)
+
+			// Hashing title to create unique ID, that serves as mechanism to prevent duplicates in DB
+			uuidString := base64.StdEncoding.EncodeToString([]byte(ellipticalTruncate(combinedItems[i].Title, 35)))
+			combinedItems[i].Uuid = uuidString
+		}
+
+		sort.Slice(combinedItems, func(i, j int) bool {
+			return combinedItems[i].PublishedParsed.After(*combinedItems[j].PublishedParsed)
+		})
+
+		createTableIfNeeded(db)
+
+		var pkAccumulated int
+		for i := 0; i < len(combinedItems); i++ {
+			var pk = insertItem(db, combinedItems[i])
+			if pk == 0 {
+				continue
+			}
+
+			if pk <= pkAccumulated {
+				B.LogOut("PK minor error")
+			} else {
+				pkAccumulated = pk
+			}
+		}
+	}
+}
+
+func createTableIfNeeded(db *sql.DB) {
+	query := `CREATE TABLE IF NOT EXISTS feed_items (
+		id SERIAL PRIMARY KEY,
+		title VARCHAR(500) NOT NULL,
+		description VARCHAR(1000) NOT NULL,
+		link VARCHAR(500) NOT NULL,
+		published timestamp NOT NULL,
+		published_parsed timestamp NOT NULL,
+		source VARCHAR(300) NOT NULL,
+		thumbnail VARCHAR(500),
+		uuid VARCHAR(300) NOT NULL,
+		created timestamp DEFAULT NOW(),
+		UNIQUE (uuid)
+	)`
+
+	_, err := db.Exec(query)
+	if err != nil {
+		B.LogErr(err)
+		os.Exit(1)
+	}
+}
+
+func insertItem(db *sql.DB, item *NewsItem) int {
+	query := "INSERT INTO feed_items (title, description, link, published, published_parsed, source, thumbnail, uuid) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING RETURNING id"
+
+	var pk int
+	err := db.QueryRow(query, item.Title, item.Description, item.Link, item.Published, item.PublishedParsed, item.Source, item.LinkImage, item.Uuid).Scan(&pk)
+
+	if err != nil {
+		B.LogOut(err.Error() + " - duplicate uuid: " + item.Uuid)
+	} else {
+		B.LogOut("Inserted item (pk: " + strconv.Itoa(pk) + "): " + ellipticalTruncate(item.Title, 35))
+	}
+
+	return pk
+}
+
+// https://stackoverflow.com/a/73939904 find better way with AI if needed
+func ellipticalTruncate(text string, maxLen int) string {
+	lastSpaceIx := maxLen
+	len := 0
+	for i, r := range text {
+		if unicode.IsSpace(r) {
+			lastSpaceIx = i
+		}
+		len++
+		if len > maxLen {
+			return text[:lastSpaceIx] + "..."
+		}
+	}
+
+	return text
+}
+
+func stringLength(str string) int {
+	var length int
+	for range str {
+		length++
+	}
+	return length
 }
