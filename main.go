@@ -131,6 +131,44 @@ func dbStatsToJson(db *sql.DB) string {
 	return databaseStats
 }
 
+func dbContentsToJson(db *sql.DB) string {
+	type Result struct {
+		TotalFeedItems        int
+		TotalFeedTranslations int
+		NewestFeedItem        time.Time
+		OldestFeedItem        time.Time
+		NewestFeedTranslation time.Time
+		OldestFeedTranslation time.Time
+	}
+
+	var result Result
+
+	err := db.QueryRow(`
+		SELECT 
+			(SELECT COUNT(*) FROM feed_items) AS total_feed_items,
+			(SELECT COUNT(*) FROM feed_translations) AS total_feed_translations,
+			(SELECT COALESCE(MAX(published_parsed), '1970-01-01') FROM feed_items) AS newest_feed_item,
+			(SELECT COALESCE(MIN(published_parsed), '1970-01-01') FROM feed_items) AS oldest_feed_item,
+			(SELECT COALESCE(MAX(published_parsed), '1970-01-01') FROM feed_translations) AS newest_feed_translation,
+			(SELECT COALESCE(MIN(published_parsed), '1970-01-01') FROM feed_translations) AS oldest_feed_translation
+	`).Scan(
+		&result.TotalFeedItems,
+		&result.TotalFeedTranslations,
+		&result.NewestFeedItem,
+		&result.OldestFeedItem,
+		&result.NewestFeedTranslation,
+		&result.OldestFeedTranslation,
+	)
+
+	if err != nil {
+		B.LogErr(err)
+		return "{}"
+	}
+
+	jsonData, _ := json.Marshal(result)
+	return string(jsonData)
+}
+
 func memoryStatsToJson() string {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
@@ -251,7 +289,7 @@ func init() {
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
-		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "db_contents": ` + dbContentsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
 
 		data := map[string]interface{}{
 			"StatsJSON": json,
@@ -276,7 +314,7 @@ func init() {
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
-		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "db_contents": ` + dbContentsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(json))
