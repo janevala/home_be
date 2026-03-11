@@ -1,0 +1,13 @@
+techeavy.news {
+    # API routes go to backend
+    reverse_proxy /auth* localhost:7071
+    reverse_proxy /sites* localhost:7071
+    reverse_proxy /archive* localhost:7071
+    reverse_proxy /search* localhost:7071
+    reverse_proxy /refresh* localhost:7071
+    reverse_proxy /translate* localhost:7071
+    reverse_proxy /jq* localhost:7071
+    
+    # Everything else goes to frontend
+    reverse_proxy localhost:7070
+}
