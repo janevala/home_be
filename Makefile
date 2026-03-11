@@ -53,9 +53,11 @@ build: clean
 	go get github.com/joho/godotenv
 
 debug: build
+	cp -f index.debug.html index.html
 	GOARCH=${BUILDARCH} go build -v -tags debug -o ${BINARY_NAME} -ldflags="-X main.version=${VERSION}" main.go
 
 release: build
+	cp -f index.release.html index.html
 	GOARCH=${BUILDARCH} go build -v -tags release -o ${BINARY_NAME} -ldflags="-X main.version=${VERSION}" main.go
 
 run:
