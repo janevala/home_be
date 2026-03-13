@@ -656,7 +656,7 @@ func crawl(sites Conf.SitesConfig, db *sql.DB) {
 
 	if len(combinedItems) > 0 {
 		for i := 0; i < len(combinedItems); i++ {
-			combinedItems[i].Description = ellipticalTruncate(combinedItems[i].Description, 500)
+			combinedItems[i].Description = ellipticalTruncate(combinedItems[i].Description, 950)
 
 			// Hashing title to create unique ID, that serves as mechanism to prevent duplicates in DB
 			uuidString := base64.StdEncoding.EncodeToString([]byte(ellipticalTruncate(combinedItems[i].Title, 35)))
