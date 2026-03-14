@@ -4,6 +4,8 @@ package config
 import (
 	"encoding/json"
 	"os"
+
+	"github.com/tailscale/hujson"
 )
 
 func LoadConfig(path string) (*Config, error) {
@@ -12,8 +14,13 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	cleaned, err := hujson.Standardize(file)
+	if err != nil {
+		return nil, err
+	}
+
 	var cfg Config
-	if err := json.Unmarshal(file, &cfg); err != nil {
+	if err := json.Unmarshal(cleaned, &cfg); err != nil {
 		return nil, err
 	}
 

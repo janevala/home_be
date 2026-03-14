@@ -51,6 +51,7 @@ build: clean
 	go get github.com/lib/pq
 	go get github.com/rifaideen/talkative
 	go get github.com/joho/godotenv
+	go get github.com/tailscale/hujson
 
 debug: build
 	cp -f index.debug.html index.html

@@ -246,11 +246,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	if B.IsProduction() {
-		err = godotenv.Load(".env")
-	} else {
-		err = godotenv.Load(".env.example")
-	}
+	err = godotenv.Load(".env")
 
 	if err != nil {
 		fmt.Println("No .env file found")
