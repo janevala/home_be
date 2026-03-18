@@ -696,6 +696,7 @@ func createTableIfNeeded(db *sql.DB) {
 		source VARCHAR(300) NOT NULL,
 		thumbnail VARCHAR(500),
 		uuid VARCHAR(300) NOT NULL,
+		language VARCHAR(10),
 		created timestamp DEFAULT NOW(),
 		UNIQUE (uuid)
 	)`
