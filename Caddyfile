@@ -7,7 +7,11 @@ techeavy.news {
     reverse_proxy /refresh* localhost:7071
     reverse_proxy /translate* localhost:7071
     reverse_proxy /jq* localhost:7071
-    
+
+    # No-cache for Flutter entry points
+    @entrypoints path /index.html /flutter_bootstrap.js /flutter.js
+    header @entrypoints Cache-Control "no-cache"
+
     # Everything else goes to frontend
     reverse_proxy localhost:7070
 }
