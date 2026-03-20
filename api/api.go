@@ -43,6 +43,7 @@ type NewsItem struct {
 	LinkImage       string     `json:"linkImage,omitempty"`
 	Uuid            string     `json:"uuid,omitempty"`
 	Llm             string     `json:"llm,omitempty"`
+	Language        string     `json:"language,omitempty"`
 }
 
 type NewsItems struct {
@@ -196,7 +197,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 
 			limit := 10
 			offset := 0
-			lang := "en"
+			language := "en"
 
 			if l := query.Get("limit"); l != "" {
 				if l, err := strconv.Atoi(l); err == nil && l > 0 && l < 1000 {
@@ -213,7 +214,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 
 			if L := query.Get("lang"); L != "" {
 				if L == "en" || L == "de" || L == "fi" || L == "th" {
-					lang = L
+					language = L
 				}
 			}
 
@@ -226,7 +227,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			if lang == "en" {
+			if language == "en" {
 				rows, err := db.Query(
 					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
 					FROM feed_items 
@@ -268,6 +269,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 						LinkImage:       linkImage,
 						Uuid:            uuid,
 						Llm:             llm,
+						Language:        language,
 					})
 				}
 
@@ -292,7 +294,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 					WHERE language = $3 
 					ORDER BY published_parsed DESC 
 					LIMIT $1 OFFSET $2`,
-					limit, offset, lang)
+					limit, offset, language)
 
 				if err != nil {
 					B.LogErr(err)
@@ -352,6 +354,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 							LinkImage:       linkImage,
 							Uuid:            uuid,
 							Llm:             llm,
+							Language:        language,
 						})
 					}
 
@@ -397,15 +400,15 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			lang := "en"
+			language := "en"
 
 			if L := query.Get("lang"); L != "" {
 				if L == "en" || L == "de" || L == "fi" || L == "th" {
-					lang = L
+					language = L
 				}
 			}
 
-			if lang == "en" {
+			if language == "en" {
 				rows, err := db.Query(
 					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
 					FROM feed_items 
@@ -452,6 +455,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 						LinkImage:       linkImage,
 						Uuid:            uuid,
 						Llm:             llm,
+						Language:        language,
 					})
 				}
 
@@ -480,7 +484,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 					OR ft.description ILIKE '%' || $1 || '%'
 					OR fi.source ILIKE '%' || $1 || '%')
 					ORDER BY ft.published_parsed DESC
-					LIMIT 50`, searchQuery, lang)
+					LIMIT 50`, searchQuery, language)
 
 				if err != nil {
 					B.LogErr(err)
@@ -519,6 +523,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 						LinkImage:       fiThumbnail,
 						Uuid:            fiUuid,
 						Llm:             fdLlm,
+						Language:        fdLanguage,
 					})
 				}
 
