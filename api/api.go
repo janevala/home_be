@@ -219,14 +219,13 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 			}
 
 			// Get total count of items
-			// TODO: remove total items as its provided by other apis
-			var totalItems int
-			err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&totalItems)
-			if err != nil {
-				B.LogErr(err)
-				http.Error(w, "Database count error", http.StatusInternalServerError)
-				return
-			}
+			// var totalItems int
+			// err := db.QueryRow("SELECT COUNT(*) FROM feed_items").Scan(&totalItems)
+			// if err != nil {
+			// 	B.LogErr(err)
+			// 	http.Error(w, "Database count error", http.StatusInternalServerError)
+			// 	return
+			// }
 
 			if language == "en" {
 				rows, err := db.Query(
@@ -278,7 +277,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 
 				newsItems := NewsItems{
 					Items:      items,
-					TotalItems: totalItems,
+					TotalItems: 0,
 					Limit:      limit,
 					Offset:     offset,
 				}
