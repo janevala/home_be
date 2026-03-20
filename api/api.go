@@ -340,7 +340,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 
 				newsItems := NewsItems{
 					Items:      items,
-					TotalItems: totalItems,
+					TotalItems: 0,
 					Limit:      limit,
 					Offset:     offset,
 				}
