@@ -471,12 +471,15 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 				w.Write(responseJson)
 			} else {
 				rows, err := db.Query(
-					`SELECT item_id, published_parsed, language, title, description, llm
-					FROM feed_translations
-					WHERE language = $2
-					AND (title ILIKE '%' || $1 || '%'
-					OR description ILIKE '%' || $1 || '%')
-					ORDER BY published_parsed DESC
+					`SELECT fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
+					ft.published_parsed, ft.language, ft.title, ft.description, ft.llm
+					FROM feed_translations ft
+					JOIN feed_items fi ON fi.id = ft.item_id
+					WHERE ft.language = $2
+					AND (ft.title ILIKE '%' || $1 || '%'
+					OR ft.description ILIKE '%' || $1 || '%'
+					OR fi.source ILIKE '%' || $1 || '%')
+					ORDER BY ft.published_parsed DESC
 					LIMIT 50`, searchQuery, lang)
 
 				if err != nil {
@@ -485,62 +488,38 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 					return
 				}
 
-				var item_id string
-				var published_parsed *time.Time
-				var language string
-				var title string
-				var description string
-				var llm string
+				var fiLink string
+				var fiPublished string
+				var fiSource string
+				var fiThumbnail string
+				var fiUuid string
+
+				var ftPublishedParsed *time.Time
+				var fdLanguage string
+				var fdTitle string
+				var fdDescription string
+				var fdLlm string
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&item_id, &published_parsed, &language, &title, &description, &llm)
+					err := rows.Scan(&fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &fdLanguage, &fdTitle, &fdDescription, &fdLlm)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
 						return
 					}
 
-					rows2, err := db.Query(
-						`SELECT link, published, source, thumbnail, uuid 
-						FROM feed_items 
-						WHERE id = $1`, item_id)
-
-					if err != nil {
-						B.LogErr(err)
-						http.Error(w, "Database query error", http.StatusInternalServerError)
-						return
-					}
-
-					var source string
-					var link string
-					var published string
-					var linkImage string
-					var uuid string
-
-					if rows2.Next() {
-						err := rows2.Scan(&link, &published, &source, &linkImage, &uuid)
-						if err != nil {
-							B.LogErr(err)
-							rows2.Close()
-							http.Error(w, "Database scan error", http.StatusInternalServerError)
-							return
-						}
-
-						items = append(items, NewsItem{
-							Source:          source,
-							Title:           title,
-							Description:     description,
-							Link:            link,
-							Published:       published,
-							PublishedParsed: published_parsed,
-							LinkImage:       linkImage,
-							Uuid:            uuid,
-							Llm:             llm,
-						})
-					}
-
-					rows2.Close()
+					items = append(items, NewsItem{
+						Source:          fiSource,
+						Title:           fdTitle,
+						Description:     fdDescription,
+						Link:            fiLink,
+						Published:       fiPublished,
+						PublishedParsed: ftPublishedParsed,
+						LinkImage:       fiThumbnail,
+						Uuid:            fiUuid,
+						Llm:             fdLlm,
+					})
 				}
 
 				defer rows.Close()
