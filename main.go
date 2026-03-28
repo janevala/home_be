@@ -140,7 +140,7 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 	metrics = append(metrics, "# HELP http_inflight_requests Current number of HTTP requests being handled.")
 	metrics = append(metrics, "# TYPE http_inflight_requests gauge")
 	metrics = append(metrics, fmt.Sprintf("http_inflight_requests %d", s.InflightRequests))
-
+	metrics = append(metrics, "")
 	metrics = append(metrics, "# HELP http_requests_total Total number of HTTP requests.")
 	metrics = append(metrics, "# TYPE http_requests_total counter")
 
@@ -153,6 +153,7 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 	}
 
 	if s.TotalRequests > 0 {
+		metrics = append(metrics, "")
 		metrics = append(metrics, "# HELP http_request_duration_seconds Seconds spent handling HTTP requests.")
 		metrics = append(metrics, "# TYPE http_request_duration_seconds histogram")
 
@@ -191,8 +192,11 @@ func (h *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 	h.handler.ServeHTTP(sw, r)
 
-	duration := time.Since(start)
-	h.stats.Record(r.Method, r.URL.Path, sw.status, duration)
+	// Skip recording metrics for the metrics endpoint itself
+	if r.URL.Path != "/metrics" {
+		duration := time.Since(start)
+		h.stats.Record(r.Method, r.URL.Path, sw.status, duration)
+	}
 }
 
 func dbStatsToJson(db *sql.DB) string {
