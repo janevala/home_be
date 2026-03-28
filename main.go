@@ -138,7 +138,14 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 
 	var metrics []string
 
+	// HELP and TYPE for inflight requests
+	metrics = append(metrics, "# HELP http_inflight_requests Current number of HTTP requests being handled.")
+	metrics = append(metrics, "# TYPE http_inflight_requests gauge")
 	metrics = append(metrics, fmt.Sprintf("http_inflight_requests %d", s.InflightRequests))
+
+	// HELP and TYPE for request counter
+	metrics = append(metrics, "# HELP http_requests_total Total number of HTTP requests.")
+	metrics = append(metrics, "# TYPE http_requests_total counter")
 
 	for method, handlers := range s.RequestCounts {
 		for handler, codes := range handlers {
@@ -165,6 +172,10 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 		// Sum and count
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_sum %f", float64(s.TotalResponseTime.Nanoseconds())/1e9))
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_count %d", s.TotalRequests))
+
+		// HELP and TYPE for histogram
+		metrics = append(metrics, "# HELP http_request_duration_seconds Seconds spent handling HTTP requests.")
+		metrics = append(metrics, "# TYPE http_request_duration_seconds histogram")
 	}
 
 	return strings.Join(metrics, "\n")
