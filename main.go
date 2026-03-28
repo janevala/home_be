@@ -48,6 +48,7 @@ type HTTPStats struct {
 	ResponseCodeCount map[int]int
 	RequestCounts     map[string]map[string]map[int]int // method -> handler -> status -> count
 	TotalResponseTime time.Duration
+	DurationBuckets   map[string]float64 // bucket -> count
 }
 
 func NewHTTPStats() *HTTPStats {
@@ -56,6 +57,7 @@ func NewHTTPStats() *HTTPStats {
 		RequestsByPath:    make(map[string]int),
 		ResponseCodeCount: make(map[int]int),
 		RequestCounts:     make(map[string]map[string]map[int]int),
+		DurationBuckets:   make(map[string]float64),
 	}
 }
 
@@ -67,6 +69,18 @@ func (s *HTTPStats) Record(method, path string, statusCode int, duration time.Du
 	s.RequestsByPath[path]++
 	s.ResponseCodeCount[statusCode]++
 	s.TotalResponseTime += duration
+
+	// Track histogram buckets
+	durationSeconds := float64(duration.Nanoseconds()) / 1e9
+	buckets := []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}
+	for _, bucket := range buckets {
+		if durationSeconds <= bucket {
+			bucketKey := fmt.Sprintf("le=\"%f\"", bucket)
+			s.DurationBuckets[bucketKey]++
+		}
+	}
+	// +Inf bucket (all requests)
+	s.DurationBuckets["le=\"+Inf\""]++
 
 	if s.RequestCounts[method] == nil {
 		s.RequestCounts[method] = make(map[string]map[int]int)
@@ -118,6 +132,20 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 	}
 
 	if s.TotalRequests > 0 {
+		// Histogram buckets for http_request_duration_seconds
+		buckets := []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}
+		for _, bucket := range buckets {
+			bucketKey := fmt.Sprintf("le=\"%f\"", bucket)
+			if count, exists := s.DurationBuckets[bucketKey]; exists {
+				metrics = append(metrics, fmt.Sprintf(`http_request_duration_seconds_bucket{le="%f"} %f`, bucket, count))
+			}
+		}
+		// +Inf bucket
+		if count, exists := s.DurationBuckets["le=\"+Inf\""]; exists {
+			metrics = append(metrics, fmt.Sprintf(`http_request_duration_seconds_bucket{le="+Inf"} %f`, count))
+		}
+
+		// Sum and count
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_sum %f", float64(s.TotalResponseTime.Nanoseconds())/1e9))
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_count %d", s.TotalRequests))
 	}
