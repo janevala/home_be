@@ -85,7 +85,6 @@ func (s *HTTPStats) Record(method, path string, statusCode int, duration time.Du
 	s.ResponseCodeCount[statusCode]++
 	s.TotalResponseTime += duration
 
-	// Track histogram buckets
 	durationSeconds := float64(duration.Nanoseconds()) / 1e9
 	buckets := []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}
 	for _, bucket := range buckets {
@@ -94,7 +93,7 @@ func (s *HTTPStats) Record(method, path string, statusCode int, duration time.Du
 			s.DurationBuckets[bucketKey]++
 		}
 	}
-	// +Inf bucket (all requests)
+
 	s.DurationBuckets["le=\"+Inf\""]++
 
 	if s.RequestCounts[method] == nil {
@@ -138,12 +137,10 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 
 	var metrics []string
 
-	// HELP and TYPE for inflight requests
 	metrics = append(metrics, "# HELP http_inflight_requests Current number of HTTP requests being handled.")
 	metrics = append(metrics, "# TYPE http_inflight_requests gauge")
 	metrics = append(metrics, fmt.Sprintf("http_inflight_requests %d", s.InflightRequests))
 
-	// HELP and TYPE for request counter
 	metrics = append(metrics, "# HELP http_requests_total Total number of HTTP requests.")
 	metrics = append(metrics, "# TYPE http_requests_total counter")
 
@@ -156,7 +153,9 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 	}
 
 	if s.TotalRequests > 0 {
-		// Histogram buckets for http_request_duration_seconds
+		metrics = append(metrics, "# HELP http_request_duration_seconds Seconds spent handling HTTP requests.")
+		metrics = append(metrics, "# TYPE http_request_duration_seconds histogram")
+
 		buckets := []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}
 		for _, bucket := range buckets {
 			bucketKey := fmt.Sprintf("le=\"%f\"", bucket)
@@ -164,18 +163,13 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 				metrics = append(metrics, fmt.Sprintf(`http_request_duration_seconds_bucket{le="%f"} %f`, bucket, count))
 			}
 		}
-		// +Inf bucket
+
 		if count, exists := s.DurationBuckets["le=\"+Inf\""]; exists {
 			metrics = append(metrics, fmt.Sprintf(`http_request_duration_seconds_bucket{le="+Inf"} %f`, count))
 		}
 
-		// Sum and count
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_sum %f", float64(s.TotalResponseTime.Nanoseconds())/1e9))
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_count %d", s.TotalRequests))
-
-		// HELP and TYPE for histogram
-		metrics = append(metrics, "# HELP http_request_duration_seconds Seconds spent handling HTTP requests.")
-		metrics = append(metrics, "# TYPE http_request_duration_seconds histogram")
 	}
 
 	return strings.Join(metrics, "\n")
@@ -279,8 +273,6 @@ func prometheusMetrics() string {
 	var metrics []string
 
 	// HTTP metrics using existing data
-	metrics = append(metrics, "# HELP http_requests_total Total HTTP requests")
-	metrics = append(metrics, "# TYPE http_requests_total counter")
 	metrics = append(metrics, httpStats.GetPrometheusMetrics())
 
 	// Database metrics using existing data
