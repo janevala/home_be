@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +16,6 @@ import (
 	"syscall"
 	"time"
 
-	Ai "github.com/janevala/home_be/ai"
 	Api "github.com/janevala/home_be/api"
 	B "github.com/janevala/home_be/build"
 	Conf "github.com/janevala/home_be/config"
@@ -93,6 +91,37 @@ func (s *HTTPStats) GetJsonSnapshot() string {
 	}
 
 	return string(jsonData)
+}
+
+func (s *HTTPStats) GetPrometheusMetrics() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var metrics []string
+
+	// HTTP request totals by method and path
+	for method, count := range s.RequestsByMethod {
+		metrics = append(metrics, fmt.Sprintf(`http_requests_total{method="%s"} %d`, method, count))
+	}
+
+	for path, count := range s.RequestsByPath {
+		metrics = append(metrics, fmt.Sprintf(`http_requests_total{handler="%s"} %d`, path, count))
+	}
+
+	// HTTP request totals by status code
+	for code, count := range s.ResponseCodeCount {
+		metrics = append(metrics, fmt.Sprintf(`http_requests_total{code="%d"} %d`, code, count))
+	}
+
+	// Response time metrics
+	if s.TotalRequests > 0 {
+		avgResponseTime := float64(s.TotalResponseTime.Nanoseconds()) / float64(s.TotalRequests) / 1e9
+		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_sum %f", float64(s.TotalResponseTime.Nanoseconds())/1e9))
+		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_count %d", s.TotalRequests))
+		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_avg %f", avgResponseTime))
+	}
+
+	return strings.Join(metrics, "\n")
 }
 
 type HttpHandler struct {
@@ -186,6 +215,48 @@ func memoryStatsToJson() string {
 	return string(memStatsJson)
 }
 
+func prometheusMetrics() string {
+	var metrics []string
+
+	// HTTP metrics using existing data
+	metrics = append(metrics, "# HELP http_requests_total Total HTTP requests")
+	metrics = append(metrics, "# TYPE http_requests_total counter")
+	metrics = append(metrics, httpStats.GetPrometheusMetrics())
+
+	// Database metrics using existing data
+	dbStats := db.Stats()
+	metrics = append(metrics, "")
+	metrics = append(metrics, "# HELP pg_connections Number of active connections")
+	metrics = append(metrics, "# TYPE pg_connections gauge")
+	metrics = append(metrics, fmt.Sprintf("pg_connections %d", dbStats.OpenConnections))
+	metrics = append(metrics, "")
+	metrics = append(metrics, "# HELP pg_connections_idle Number of idle connections")
+	metrics = append(metrics, "# TYPE pg_connections_idle gauge")
+	metrics = append(metrics, fmt.Sprintf("pg_connections_idle %d", dbStats.Idle))
+	metrics = append(metrics, "")
+	metrics = append(metrics, "# HELP pg_connections_in_use Number of connections in use")
+	metrics = append(metrics, "# TYPE pg_connections_in_use gauge")
+	metrics = append(metrics, fmt.Sprintf("pg_connections_in_use %d", dbStats.InUse))
+
+	// Go runtime metrics
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	metrics = append(metrics, "")
+	metrics = append(metrics, "# HELP go_goroutines Number of goroutines")
+	metrics = append(metrics, "# TYPE go_goroutines gauge")
+	metrics = append(metrics, fmt.Sprintf("go_goroutines %d", runtime.NumGoroutine()))
+	metrics = append(metrics, "")
+	metrics = append(metrics, "# HELP process_resident_memory_bytes Resident memory size")
+	metrics = append(metrics, "# TYPE process_resident_memory_bytes gauge")
+	metrics = append(metrics, fmt.Sprintf("process_resident_memory_bytes %d", m.Sys))
+	metrics = append(metrics, "")
+	metrics = append(metrics, "# HELP process_cpu_seconds_total CPU time")
+	metrics = append(metrics, "# TYPE process_cpu_seconds_total counter")
+	metrics = append(metrics, fmt.Sprintf("process_cpu_seconds_total %f", float64(time.Since(startupTime).Milliseconds())/1000))
+
+	return strings.Join(metrics, "\n")
+}
+
 func main() {
 	logger := log.New(log.Writer(), "[HTTP] ", log.LstdFlags)
 	B.SetLogger(logger)
@@ -275,29 +346,8 @@ func init() {
 	httpRouter := http.NewServeMux()
 
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("index.html")
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, "Could not load template", http.StatusInternalServerError)
-			return
-		}
-
-		startupMilliseconds := time.Since(startupTime).Milliseconds()
-		processUptime := strconv.FormatInt(startupMilliseconds, 10)
-
-		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "db_contents": ` + dbContentsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
-
-		data := map[string]interface{}{
-			"StatsJSON": json,
-		}
-
-		if err := tmpl.Execute(w, data); err != nil {
-			fmt.Println(err)
-			http.Error(w, "Could not execute template", http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Printf("Request served: %s %s\n", r.Method, r.URL.Path)
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, req *http.Request) {
@@ -316,6 +366,14 @@ func init() {
 		w.Write([]byte(json))
 	})
 
+	httpRouter.HandleFunc("GET /metrics", func(w http.ResponseWriter, req *http.Request) {
+		response := prometheusMetrics()
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(response))
+	})
+
 	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
@@ -326,8 +384,8 @@ func init() {
 	httpRouter.HandleFunc("GET /search", Api.SearchHandler(db))
 	httpRouter.HandleFunc("OPTIONS /refresh", Api.ArchiveRefreshHandler(cfg.Sites, db))
 	httpRouter.HandleFunc("GET /refresh", Api.ArchiveRefreshHandler(cfg.Sites, db))
-	httpRouter.HandleFunc("POST /translate", Ai.ExplainHandler(cfg.Ollama))
-	httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
+	// httpRouter.HandleFunc("POST /translate", Ai.ExplainHandler(cfg.Ollama))
+	// httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
 
 	corsRouter := corsMiddleware(httpRouter)
 
@@ -338,7 +396,7 @@ func init() {
 	http.Handle("/archive", corsRouter)
 	http.Handle("/search", corsRouter)
 	http.Handle("/refresh", corsRouter)
-	http.Handle("/translate", corsRouter)
+	// http.Handle("/translate", corsRouter)
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
