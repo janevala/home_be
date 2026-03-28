@@ -46,9 +46,10 @@ type HTTPStats struct {
 	RequestsByMethod  map[string]int
 	RequestsByPath    map[string]int
 	ResponseCodeCount map[int]int
-	RequestCounts     map[string]map[string]map[int]int // method -> handler -> status -> count
+	RequestCounts     map[string]map[string]map[int]int
 	TotalResponseTime time.Duration
-	DurationBuckets   map[string]float64 // bucket -> count
+	DurationBuckets   map[string]float64
+	InflightRequests  int
 }
 
 func NewHTTPStats() *HTTPStats {
@@ -58,6 +59,20 @@ func NewHTTPStats() *HTTPStats {
 		ResponseCodeCount: make(map[int]int),
 		RequestCounts:     make(map[string]map[string]map[int]int),
 		DurationBuckets:   make(map[string]float64),
+	}
+}
+
+func (s *HTTPStats) IncrementInflight() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.InflightRequests++
+}
+
+func (s *HTTPStats) DecrementInflight() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.InflightRequests > 0 {
+		s.InflightRequests--
 	}
 }
 
@@ -123,6 +138,8 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 
 	var metrics []string
 
+	metrics = append(metrics, fmt.Sprintf("http_inflight_requests %d", s.InflightRequests))
+
 	for method, handlers := range s.RequestCounts {
 		for handler, codes := range handlers {
 			for code, count := range codes {
@@ -160,6 +177,9 @@ type HttpHandler struct {
 }
 
 func (h *HttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.stats.IncrementInflight()
+	defer h.stats.DecrementInflight()
+
 	start := time.Now()
 	h.logger.Printf("Received request: %s %s %s", r.Method, r.URL.Path, r.URL.RawQuery)
 
