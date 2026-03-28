@@ -46,6 +46,7 @@ type HTTPStats struct {
 	RequestsByMethod  map[string]int
 	RequestsByPath    map[string]int
 	ResponseCodeCount map[int]int
+	RequestCounts     map[string]map[string]map[int]int // method -> handler -> status -> count
 	TotalResponseTime time.Duration
 }
 
@@ -54,6 +55,7 @@ func NewHTTPStats() *HTTPStats {
 		RequestsByMethod:  make(map[string]int),
 		RequestsByPath:    make(map[string]int),
 		ResponseCodeCount: make(map[int]int),
+		RequestCounts:     make(map[string]map[string]map[int]int),
 	}
 }
 
@@ -65,9 +67,17 @@ func (s *HTTPStats) Record(method, path string, statusCode int, duration time.Du
 	s.RequestsByPath[path]++
 	s.ResponseCodeCount[statusCode]++
 	s.TotalResponseTime += duration
+
+	if s.RequestCounts[method] == nil {
+		s.RequestCounts[method] = make(map[string]map[int]int)
+	}
+	if s.RequestCounts[method][path] == nil {
+		s.RequestCounts[method][path] = make(map[int]int)
+	}
+	s.RequestCounts[method][path][statusCode]++
 }
 
-func (s *HTTPStats) GetJsonSnapshot() string {
+func (s *HTTPStats) GetJqSnapshot() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -99,26 +109,17 @@ func (s *HTTPStats) GetPrometheusMetrics() string {
 
 	var metrics []string
 
-	// HTTP request totals by method and path
-	for method, count := range s.RequestsByMethod {
-		metrics = append(metrics, fmt.Sprintf(`http_requests_total{method="%s"} %d`, method, count))
+	for method, handlers := range s.RequestCounts {
+		for handler, codes := range handlers {
+			for code, count := range codes {
+				metrics = append(metrics, fmt.Sprintf(`http_requests_total{method="%s",handler="%s",code="%d"} %d`, method, handler, code, count))
+			}
+		}
 	}
 
-	for path, count := range s.RequestsByPath {
-		metrics = append(metrics, fmt.Sprintf(`http_requests_total{handler="%s"} %d`, path, count))
-	}
-
-	// HTTP request totals by status code
-	for code, count := range s.ResponseCodeCount {
-		metrics = append(metrics, fmt.Sprintf(`http_requests_total{code="%d"} %d`, code, count))
-	}
-
-	// Response time metrics
 	if s.TotalRequests > 0 {
-		avgResponseTime := float64(s.TotalResponseTime.Nanoseconds()) / float64(s.TotalRequests) / 1e9
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_sum %f", float64(s.TotalResponseTime.Nanoseconds())/1e9))
 		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_count %d", s.TotalRequests))
-		metrics = append(metrics, fmt.Sprintf("http_request_duration_seconds_avg %f", avgResponseTime))
 	}
 
 	return strings.Join(metrics, "\n")
@@ -348,6 +349,7 @@ func init() {
 	httpRouter.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
 	})
 
 	httpRouter.HandleFunc("GET /jq", func(w http.ResponseWriter, req *http.Request) {
@@ -360,7 +362,7 @@ func init() {
 		startupMilliseconds := time.Since(startupTime).Milliseconds()
 		processUptime := strconv.FormatInt(startupMilliseconds, 10)
 
-		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "db_contents": ` + dbContentsToJson(db) + `, "http_stats": ` + httpStats.GetJsonSnapshot() + `}`
+		json := `{"uptime": "` + processUptime + `", "os": "` + runtime.GOOS + `", "arch": "` + runtime.GOARCH + `", "version": "` + version + `", "go_version": "` + runtime.Version() + `", "num_cpu": ` + strconv.Itoa(runtime.NumCPU()) + `, "num_goroutine": ` + strconv.Itoa(runtime.NumGoroutine()) + `, "num_gomaxprocs": ` + strconv.Itoa(runtime.GOMAXPROCS(0)) + `, "num_cgo_call": ` + strconv.FormatInt(runtime.NumCgoCall(), 10) + `, "memory_stats": ` + memoryStatsToJson() + `, "db_stats": ` + dbStatsToJson(db) + `, "db_contents": ` + dbContentsToJson(db) + `, "http_stats": ` + httpStats.GetJqSnapshot() + `}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(json))
