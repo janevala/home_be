@@ -33,13 +33,14 @@ type LoginObject struct {
 }
 
 type NewsItem struct {
-	Source          string     `json:"source,omitempty"`
+	Id              int        `json:"id,omitempty"`
 	Title           string     `json:"title,omitempty"`
 	Description     string     `json:"description,omitempty"`
 	Content         string     `json:"content,omitempty"`
 	Link            string     `json:"link,omitempty"`
 	Published       string     `json:"published,omitempty"`
 	PublishedParsed *time.Time `json:"publishedParsed,omitempty"`
+	Source          string     `json:"source,omitempty"`
 	LinkImage       string     `json:"linkImage,omitempty"`
 	Uuid            string     `json:"uuid,omitempty"`
 	Llm             string     `json:"llm,omitempty"`
@@ -228,30 +229,32 @@ func ArticlesHandler(db *sql.DB) http.HandlerFunc {
 
 			if language == "en" {
 				rows, err := db.Query(
-					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid
+					`SELECT id, title, description, link, published, published_parsed, source, thumbnail, uuid
 					FROM feed_items
 					ORDER BY published_parsed DESC
 					LIMIT $1 OFFSET $2`,
 					limit, offset)
+
 				if err != nil {
 					B.LogErr(err)
 					http.Error(w, "Database query error", http.StatusInternalServerError)
 					return
 				}
 
-				var source string
+				var id int
 				var title string
 				var description string
 				var link string
 				var published string
 				var published_parsed *time.Time
+				var source string
 				var thumbnail string
 				var uuid string
 				var llm string = "original"
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &thumbnail, &uuid)
+					err := rows.Scan(&id, &title, &description, &link, &published, &published_parsed, &source, &thumbnail, &uuid)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -259,12 +262,13 @@ func ArticlesHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					items = append(items, NewsItem{
-						Source:          source,
+						Id:              id,
 						Title:           title,
 						Description:     description,
 						Link:            link,
 						Published:       published,
 						PublishedParsed: published_parsed,
+						Source:          source,
 						LinkImage:       thumbnail,
 						Uuid:            uuid,
 						Llm:             llm,
@@ -287,7 +291,7 @@ func ArticlesHandler(db *sql.DB) http.HandlerFunc {
 				w.WriteHeader(http.StatusOK)
 				w.Write(responseJson)
 			} else {
-				rows, err := db.Query(`SELECT fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
+				rows, err := db.Query(`SELECT fi.id, fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
 					ft.published_parsed, ft.language, ft.title, ft.description, ft.llm
 					FROM feed_translations ft
 					JOIN feed_items fi ON fi.id = ft.item_id
@@ -301,6 +305,7 @@ func ArticlesHandler(db *sql.DB) http.HandlerFunc {
 					return
 				}
 
+				var fiId int
 				var fiLink string
 				var fiPublished string
 				var fiSource string
@@ -315,7 +320,7 @@ func ArticlesHandler(db *sql.DB) http.HandlerFunc {
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &ftLanguage, &ftTitle, &ftDescription, &ftLlm)
+					err := rows.Scan(&fiId, &fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &ftLanguage, &ftTitle, &ftDescription, &ftLlm)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -323,6 +328,7 @@ func ArticlesHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					items = append(items, NewsItem{
+						Id:              fiId,
 						Source:          fiSource,
 						Title:           ftTitle,
 						Description:     ftDescription,
@@ -384,7 +390,7 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 
 			if language == "en" {
 				rows, err := db.Query(
-					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid
+					`SELECT id, title, description, link, published, published_parsed, source, thumbnail, uuid
 					FROM feed_items
 					WHERE id = $1`,
 					id)
@@ -395,6 +401,7 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 					return
 				}
 
+				var id int
 				var source string
 				var title string
 				var description string
@@ -407,7 +414,7 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &thumbnail, &uuid)
+					err := rows.Scan(&id, &title, &description, &link, &published, &published_parsed, &source, &thumbnail, &uuid)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -415,6 +422,7 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					items = append(items, NewsItem{
+						Id:              id,
 						Source:          source,
 						Title:           title,
 						Description:     description,
@@ -440,14 +448,13 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 				w.WriteHeader(http.StatusOK)
 				w.Write(responseJson)
 			} else {
-				rows, err := db.Query(`SELECT fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
+				rows, err := db.Query(`SELECT fi.id, fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
 					ft.published_parsed, ft.language, ft.title, ft.description, ft.llm
 					FROM feed_translations ft
 					JOIN feed_items fi ON fi.id = ft.item_id
 					WHERE fi.id = $1
-					AND ft.language = $3
-					ORDER BY ft.published_parsed DESC
-					LIMIT $1 OFFSET $2`, id, language)
+					AND ft.language = $2
+					ORDER BY ft.published_parsed DESC`, id, language)
 
 				if err != nil {
 					B.LogErr(err)
@@ -455,6 +462,7 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 					return
 				}
 
+				var fiId int
 				var fiLink string
 				var fiPublished string
 				var fiSource string
@@ -469,7 +477,7 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &ftLanguage, &ftTitle, &ftDescription, &ftLlm)
+					err := rows.Scan(&fiId, &fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &ftLanguage, &ftTitle, &ftDescription, &ftLlm)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -477,6 +485,7 @@ func ArticleHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					items = append(items, NewsItem{
+						Id:              fiId,
 						Source:          fiSource,
 						Title:           ftTitle,
 						Description:     ftDescription,
@@ -536,7 +545,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 
 			if language == "en" {
 				rows, err := db.Query(
-					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
+					`SELECT id, title, description, link, published, published_parsed, source, thumbnail, uuid 
 					FROM feed_items 
 					WHERE title ILIKE '%' || $1 || '%' 
 					OR description ILIKE '%' || $1 || '%'
@@ -552,6 +561,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 
 				defer rows.Close()
 
+				var id int
 				var source string
 				var title string
 				var description string
@@ -564,7 +574,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &thumbnail, &uuid)
+					err := rows.Scan(&id, &title, &description, &link, &published, &published_parsed, &source, &thumbnail, &uuid)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -572,6 +582,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					items = append(items, NewsItem{
+						Id:              id,
 						Source:          source,
 						Title:           title,
 						Description:     description,
@@ -601,7 +612,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 				w.Write(responseJson)
 			} else {
 				rows, err := db.Query(
-					`SELECT fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
+					`SELECT fi.id, fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
 					ft.published_parsed, ft.language, ft.title, ft.description, ft.llm
 					FROM feed_translations ft
 					JOIN feed_items fi ON fi.id = ft.item_id
@@ -618,6 +629,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 					return
 				}
 
+				var fiId int
 				var fiLink string
 				var fiPublished string
 				var fiSource string
@@ -632,7 +644,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 
 				items := []NewsItem{}
 				for rows.Next() {
-					err := rows.Scan(&fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &ftLanguage, &ftTitle, &ftDescription, &ftLlm)
+					err := rows.Scan(&fiId, &fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &ftLanguage, &ftTitle, &ftDescription, &ftLlm)
 					if err != nil {
 						B.LogErr(err)
 						http.Error(w, "Database scan error", http.StatusInternalServerError)
@@ -640,6 +652,7 @@ func SearchHandler(db *sql.DB) http.HandlerFunc {
 					}
 
 					items = append(items, NewsItem{
+						Id:              fiId,
 						Source:          fiSource,
 						Title:           ftTitle,
 						Description:     ftDescription,
