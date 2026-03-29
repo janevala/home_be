@@ -182,7 +182,7 @@ func ArchiveRefreshHandler(sites Conf.SitesConfig, db *sql.DB) http.HandlerFunc 
 	}
 }
 
-func ArchiveHandler(db *sql.DB) http.HandlerFunc {
+func ArticlesHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
@@ -228,9 +228,9 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 
 			if language == "en" {
 				rows, err := db.Query(
-					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid 
-					FROM feed_items 
-					ORDER BY published_parsed DESC 
+					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid
+					FROM feed_items
+					ORDER BY published_parsed DESC
 					LIMIT $1 OFFSET $2`,
 					limit, offset)
 				if err != nil {
@@ -292,7 +292,7 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 					FROM feed_translations ft
 					JOIN feed_items fi ON fi.id = ft.item_id
 					WHERE ft.language = $3
-					ORDER BY ft.published_parsed DESC 
+					ORDER BY ft.published_parsed DESC
 					LIMIT $1 OFFSET $2`, limit, offset, language)
 
 				if err != nil {
@@ -343,6 +343,157 @@ func ArchiveHandler(db *sql.DB) http.HandlerFunc {
 					TotalItems: 0,
 					Limit:      limit,
 					Offset:     offset,
+				}
+
+				responseJson, _ := json.Marshal(newsItems)
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.WriteHeader(http.StatusOK)
+				w.Write(responseJson)
+			}
+		}
+	}
+}
+
+func ArticleHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			if !strings.Contains(req.URL.RawQuery, "code=123") {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid"))
+				return
+			}
+
+			query := req.URL.Query()
+
+			language := "en"
+			id := 0
+
+			if L := query.Get("lang"); L != "" {
+				if L == "en" || L == "de" || L == "fi" || L == "th" || L == "pt" || L == "jp" {
+					language = L
+				}
+			}
+
+			if i := query.Get("id"); i != "" {
+				if i, err := strconv.Atoi(i); err == nil && i > 0 {
+					id = i
+				}
+			}
+
+			if language == "en" {
+				rows, err := db.Query(
+					`SELECT title, description, link, published, published_parsed, source, thumbnail, uuid
+					FROM feed_items
+					WHERE id = $1`,
+					id)
+
+				if err != nil {
+					B.LogErr(err)
+					http.Error(w, "Database query error", http.StatusInternalServerError)
+					return
+				}
+
+				var source string
+				var title string
+				var description string
+				var link string
+				var published string
+				var published_parsed *time.Time
+				var thumbnail string
+				var uuid string
+				var llm string = "original"
+
+				items := []NewsItem{}
+				for rows.Next() {
+					err := rows.Scan(&title, &description, &link, &published, &published_parsed, &source, &thumbnail, &uuid)
+					if err != nil {
+						B.LogErr(err)
+						http.Error(w, "Database scan error", http.StatusInternalServerError)
+						return
+					}
+
+					items = append(items, NewsItem{
+						Source:          source,
+						Title:           title,
+						Description:     description,
+						Link:            link,
+						Published:       published,
+						PublishedParsed: published_parsed,
+						LinkImage:       thumbnail,
+						Uuid:            uuid,
+						Llm:             llm,
+						Language:        language,
+					})
+				}
+
+				defer rows.Close()
+
+				newsItems := NewsItems{
+					Items: items,
+				}
+
+				responseJson, _ := json.Marshal(newsItems)
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.WriteHeader(http.StatusOK)
+				w.Write(responseJson)
+			} else {
+				rows, err := db.Query(`SELECT fi.link, fi.published, fi.source, fi.thumbnail, fi.uuid,
+					ft.published_parsed, ft.language, ft.title, ft.description, ft.llm
+					FROM feed_translations ft
+					JOIN feed_items fi ON fi.id = ft.item_id
+					WHERE fi.id = $1
+					AND ft.language = $3
+					ORDER BY ft.published_parsed DESC
+					LIMIT $1 OFFSET $2`, id, language)
+
+				if err != nil {
+					B.LogErr(err)
+					http.Error(w, "Database query error", http.StatusInternalServerError)
+					return
+				}
+
+				var fiLink string
+				var fiPublished string
+				var fiSource string
+				var fiThumbnail string
+				var fiUuid string
+
+				var ftPublishedParsed *time.Time
+				var ftLanguage string
+				var ftTitle string
+				var ftDescription string
+				var ftLlm string
+
+				items := []NewsItem{}
+				for rows.Next() {
+					err := rows.Scan(&fiLink, &fiPublished, &fiSource, &fiThumbnail, &fiUuid, &ftPublishedParsed, &ftLanguage, &ftTitle, &ftDescription, &ftLlm)
+					if err != nil {
+						B.LogErr(err)
+						http.Error(w, "Database scan error", http.StatusInternalServerError)
+						return
+					}
+
+					items = append(items, NewsItem{
+						Source:          fiSource,
+						Title:           ftTitle,
+						Description:     ftDescription,
+						Link:            fiLink,
+						Published:       fiPublished,
+						PublishedParsed: ftPublishedParsed,
+						LinkImage:       fiThumbnail,
+						Uuid:            fiUuid,
+						Llm:             ftLlm,
+						Language:        ftLanguage,
+					})
+				}
+
+				defer rows.Close()
+
+				newsItems := NewsItems{
+					Items: items,
 				}
 
 				responseJson, _ := json.Marshal(newsItems)

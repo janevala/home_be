@@ -433,34 +433,40 @@ func init() {
 
 	httpRouter.HandleFunc("POST /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(db))
-	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
-	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
-	httpRouter.HandleFunc("GET /archive", Api.ArchiveHandler(db))
-	httpRouter.HandleFunc("OPTIONS /archive", Api.ArchiveHandler(db))
+	httpRouter.HandleFunc("GET /articles", Api.ArticlesHandler(db))
+	httpRouter.HandleFunc("OPTIONS /articles", Api.ArticlesHandler(db))
+	httpRouter.HandleFunc("GET /article/{id}", Api.ArticleHandler(db))
+	httpRouter.HandleFunc("OPTIONS /article/{id}", Api.ArticleHandler(db))
 	httpRouter.HandleFunc("OPTIONS /search", Api.SearchHandler(db))
 	httpRouter.HandleFunc("GET /search", Api.SearchHandler(db))
 	httpRouter.HandleFunc("OPTIONS /refresh", Api.ArchiveRefreshHandler(cfg.Sites, db))
 	httpRouter.HandleFunc("GET /refresh", Api.ArchiveRefreshHandler(cfg.Sites, db))
-	// httpRouter.HandleFunc("POST /translate", Ai.ExplainHandler(cfg.Ollama))
-	// httpRouter.HandleFunc("OPTIONS /translate", Ai.ExplainHandler(cfg.Ollama))
+	httpRouter.HandleFunc("GET /sites", Api.SitesHandler(cfg.Sites))
+	httpRouter.HandleFunc("OPTIONS /sites", Api.SitesHandler(cfg.Sites))
 
 	corsRouter := corsMiddleware(httpRouter)
 
 	http.Handle("/", corsRouter)
 	http.Handle("/jq", corsRouter)
 	http.Handle("/auth", corsRouter)
-	http.Handle("/sites", corsRouter)
+	http.Handle("/articles", corsRouter)
 	http.Handle("/archive", corsRouter)
+	http.Handle("/article/{id}", corsRouter)
 	http.Handle("/search", corsRouter)
 	http.Handle("/refresh", corsRouter)
-	// http.Handle("/translate", corsRouter)
+	http.Handle("/sites", corsRouter)
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Allow-Origin", "https://techeavy.news")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		if B.IsProduction() {
+			w.Header().Set("Access-Control-Allow-Origin", "https://techeavy.news")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
