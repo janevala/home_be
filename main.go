@@ -435,6 +435,8 @@ func init() {
 	httpRouter.HandleFunc("OPTIONS /auth", Api.FakeAuthHandler(db))
 	httpRouter.HandleFunc("GET /articles", Api.ArticlesHandler(db))
 	httpRouter.HandleFunc("OPTIONS /articles", Api.ArticlesHandler(db))
+	httpRouter.HandleFunc("GET /archive", Api.ArticlesHandler(db))
+	httpRouter.HandleFunc("OPTIONS /archive", Api.ArticlesHandler(db))
 	httpRouter.HandleFunc("GET /article/{id}", Api.ArticleHandler(db))
 	httpRouter.HandleFunc("OPTIONS /article/{id}", Api.ArticleHandler(db))
 	httpRouter.HandleFunc("OPTIONS /search", Api.SearchHandler(db))
